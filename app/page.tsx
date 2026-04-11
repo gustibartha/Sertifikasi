@@ -6,27 +6,19 @@ import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 
 // === KONFIGURASI SUPABASE ===
-// Ganti dengan URL dan Key milikmu
 const SUPABASE_URL = "https://soohdpwdrozxsjcmbptv.supabase.co";
 const SUPABASE_KEY = "sb_publishable_UMsKHT3BizHizC-sG2fiDA_XeoNN3SE";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export default function MonitoringPage() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    nama: "",
-    nid: "",
-    bidang: "",
-    sub_bidang: "",
-    sertifikat: "",
-    tgl_expired: "",
-    file_url: "" as string | null,
+    nama: "", nid: "", bidang: "", sub_bidang: "",
+    sertifikat: "", tgl_expired: "", file_url: null,
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   async function fetchData() {
     setLoading(true);
@@ -34,39 +26,32 @@ export default function MonitoringPage() {
       .from("sertifikasi")
       .select("*")
       .order("tgl_expired", { ascending: true });
-    
     if (!error) setData(res || []);
     setLoading(false);
   }
 
-  const handleFile = (e: any) => {
+  const handleFile = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, file_url: reader.result as string });
-      };
+      reader.onloadend = () => setFormData({ ...formData, file_url: reader.result });
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.from("sertifikasi").insert([formData]);
-    if (error) {
-      alert("Gagal simpan: " + error.message);
-    } else {
-      setFormData({
-        nama: "", nid: "", bidang: "", sub_bidang: "",
-        sertifikat: "", tgl_expired: "", file_url: null
-      });
+    if (error) alert("Gagal simpan: " + error.message);
+    else {
+      setFormData({ nama: "", nid: "", bidang: "", sub_bidang: "", sertifikat: "", tgl_expired: "", file_url: null });
       fetchData();
     }
     setLoading(false);
   };
 
-  async function deleteData(id: string) {
+  async function deleteData(id) {
     if (!confirm("Hapus data ini?")) return;
     setLoading(true);
     await supabase.from("sertifikasi").delete().eq("id", id);
@@ -84,7 +69,7 @@ export default function MonitoringPage() {
   return (
     <div className="container-fluid p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
       {loading && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(255,255,255,0.7)", z-index: 9999, display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(255,255,255,0.7)", zIndex: 9999, display: "flex", justifyContent: "center", alignItems: "center" }}>
           <div className="spinner-border text-primary"></div>
         </div>
       )}
@@ -113,11 +98,11 @@ export default function MonitoringPage() {
         <div className="col-md-8">
           <div className="card shadow-sm p-4 border-0">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold m-0">Daftar Monitoring Online</h5>
+              <h5 className="fw-bold m-0 text-primary">Daftar Monitoring Online</h5>
               <button onClick={exportToExcel} className="btn btn-success btn-sm fw-bold">📊 Download Excel</button>
             </div>
             <div className="table-responsive">
-              <table className="table table-hover align-middle">
+              <table className="table table-hover align-middle" style={{ fontSize: "0.85rem" }}>
                 <thead className="table-light">
                   <tr>
                     <th>Identitas</th>
@@ -137,8 +122,8 @@ export default function MonitoringPage() {
                         <td><strong>{item.nama}</strong><br/><small className="text-muted">{item.nid}</small></td>
                         <td>{item.bidang}<br/><small>{item.sub_bidang}</small></td>
                         <td>{item.sertifikat}</td>
-                        <td>{item.tgl_expired}<br/><small className="fw-bold text-dark">{diffDays < 0 ? "EXPIRED" : `${diffDays} Hari Lagi`}</small></td>
-                        <td>{item.file_url ? <a href={item.file_url} target="_blank" className="btn btn-sm btn-outline-dark">Lihat</a> : "-"}</td>
+                        <td>{item.tgl_expired}<br/><small className="fw-bold">{diffDays < 0 ? "EXPIRED" : `${diffDays} Hari Lagi`}</small></td>
+                        <td>{item.file_url ? <a href={item.file_url} target="_blank" className="btn btn-sm btn-outline-dark" style={{ fontSize: "0.7rem" }}>Lihat</a> : "-"}</td>
                         <td><button onClick={() => deleteData(item.id)} className="btn btn-sm btn-danger">✕</button></td>
                       </tr>
                     );
