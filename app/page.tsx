@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 
-// === KONFIGURASI SUPABASE ===
+// === ISI SESUAI DATA SUPABASE KAMU ===
 const SUPABASE_URL = "https://soohdpwdrozxsjcmbptv.supabase.co";
 const SUPABASE_KEY = "sb_publishable_UMsKHT3BizHizC-sG2fiDA_XeoNN3SE";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -22,10 +22,7 @@ export default function MonitoringPage() {
 
   async function fetchData() {
     setLoading(true);
-    const { data: res, error } = await supabase
-      .from("sertifikasi")
-      .select("*")
-      .order("tgl_expired", { ascending: true });
+    const { data: res, error } = await supabase.from("sertifikasi").select("*").order("tgl_expired", { ascending: true });
     if (!error) setData(res || []);
     setLoading(false);
   }
@@ -52,79 +49,64 @@ export default function MonitoringPage() {
   };
 
   async function deleteData(id) {
-    if (!confirm("Hapus data ini?")) return;
-    setLoading(true);
+    if (!confirm("Hapus data?")) return;
     await supabase.from("sertifikasi").delete().eq("id", id);
     fetchData();
   }
 
   function exportToExcel() {
-    const exportData = data.map(({ id, created_at, file_url, ...rest }) => rest);
-    const ws = XLSX.utils.json_to_sheet(exportData);
+    const ws = XLSX.utils.json_to_sheet(data.map(({ id, created_at, file_url, ...rest }) => rest));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sertifikasi");
-    XLSX.writeFile(wb, "Data_Sertifikasi.xlsx");
+    XLSX.writeFile(wb, "Sertifikasi.xlsx");
   }
 
   return (
-    <div className="container-fluid p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
-      {loading && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(255,255,255,0.7)", zIndex: 9999, display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <div className="spinner-border text-primary"></div>
-        </div>
-      )}
-
+    <div className="container p-4">
       <div className="row">
         <div className="col-md-4">
-          <div className="card shadow-sm p-4 mb-4 border-0">
-            <h5 className="mb-3 fw-bold text-primary">Tambah Sertifikasi</h5>
+          <div className="card p-4 shadow-sm border-0">
+            <h5 className="fw-bold mb-3">Input Sertifikasi</h5>
             <form onSubmit={handleSubmit}>
-              <input type="text" className="form-control mb-2" placeholder="Nama Karyawan" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} required />
+              <input type="text" className="form-control mb-2" placeholder="Nama" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} required />
               <input type="text" className="form-control mb-2" placeholder="NID" value={formData.nid} onChange={e => setFormData({...formData, nid: e.target.value})} required />
-              <div className="row g-2 mb-2">
-                <div className="col"><input type="text" className="form-control" placeholder="Bidang" value={formData.bidang} onChange={e => setFormData({...formData, bidang: e.target.value})} required /></div>
-                <div className="col"><input type="text" className="form-control" placeholder="Sub Bidang" value={formData.sub_bidang} onChange={e => setFormData({...formData, sub_bidang: e.target.value})} required /></div>
-              </div>
-              <input type="text" className="form-control mb-2" placeholder="Nama Sertifikat" value={formData.sertifikat} onChange={e => setFormData({...formData, sertifikat: e.target.value})} required />
-              <label className="small text-muted">Tanggal Expired:</label>
+              <input type="text" className="form-control mb-2" placeholder="Bidang" value={formData.bidang} onChange={e => setFormData({...formData, bidang: e.target.value})} required />
+              <input type="text" className="form-control mb-2" placeholder="Sub Bidang" value={formData.sub_bidang} onChange={e => setFormData({...formData, sub_bidang: e.target.value})} required />
+              <input type="text" className="form-control mb-2" placeholder="Sertifikat" value={formData.sertifikat} onChange={e => setFormData({...formData, sertifikat: e.target.value})} required />
               <input type="date" className="form-control mb-3" value={formData.tgl_expired} onChange={e => setFormData({...formData, tgl_expired: e.target.value})} required />
-              <label className="small text-muted">Lampiran Sertifikat:</label>
               <input type="file" className="form-control mb-3" onChange={handleFile} accept="image/*,application/pdf" />
-              <button type="submit" className="btn btn-primary w-100 fw-bold">Simpan ke Cloud</button>
+              <button type="submit" className="btn btn-primary w-100" disabled={loading}>{loading ? "Menyimpan..." : "Simpan"}</button>
             </form>
           </div>
         </div>
-
         <div className="col-md-8">
-          <div className="card shadow-sm p-4 border-0">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold m-0 text-primary">Daftar Monitoring Online</h5>
-              <button onClick={exportToExcel} className="btn btn-success btn-sm fw-bold">📊 Download Excel</button>
+          <div className="card p-4 shadow-sm border-0">
+            <div className="d-flex justify-content-between mb-3">
+              <h5 className="fw-bold">Data Monitoring</h5>
+              <button onClick={exportToExcel} className="btn btn-success btn-sm">Download Excel</button>
             </div>
             <div className="table-responsive">
-              <table className="table table-hover align-middle" style={{ fontSize: "0.85rem" }}>
-                <thead className="table-light">
+              <table className="table">
+                <thead>
                   <tr>
-                    <th>Identitas</th>
-                    <th>Bidang</th>
+                    <th>Nama/NID</th>
                     <th>Sertifikat</th>
                     <th>Expired</th>
-                    <th>File</th>
                     <th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.map((item) => {
-                    const diffDays = Math.ceil((new Date(item.tgl_expired).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    let color = diffDays < 0 ? "#f8d7da" : diffDays <= 30 ? "#fff3cd" : "#d1e7dd";
+                    const diff = Math.ceil((new Date(item.tgl_expired).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                     return (
-                      <tr key={item.id} style={{ backgroundColor: color }}>
-                        <td><strong>{item.nama}</strong><br/><small className="text-muted">{item.nid}</small></td>
-                        <td>{item.bidang}<br/><small>{item.sub_bidang}</small></td>
+                      <tr key={item.id} className={diff < 0 ? "table-danger" : diff <= 30 ? "table-warning" : ""}>
+                        <td>{item.nama}<br/><small>{item.nid}</small></td>
                         <td>{item.sertifikat}</td>
-                        <td>{item.tgl_expired}<br/><small className="fw-bold">{diffDays < 0 ? "EXPIRED" : `${diffDays} Hari Lagi`}</small></td>
-                        <td>{item.file_url ? <a href={item.file_url} target="_blank" className="btn btn-sm btn-outline-dark" style={{ fontSize: "0.7rem" }}>Lihat</a> : "-"}</td>
-                        <td><button onClick={() => deleteData(item.id)} className="btn btn-sm btn-danger">✕</button></td>
+                        <td>{item.tgl_expired}</td>
+                        <td>
+                          {item.file_url && <a href={item.file_url} target="_blank" className="btn btn-sm btn-info me-1">Lihat</a>}
+                          <button onClick={() => deleteData(item.id)} className="btn btn-sm btn-danger">X</button>
+                        </td>
                       </tr>
                     );
                   })}
