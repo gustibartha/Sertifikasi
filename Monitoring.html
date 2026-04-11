@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sertifikasi Online - Supabase Sync</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #f1f3f5; padding: 20px; font-family: 'Inter', sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .status-expired { border-left: 5px solid #dc3545; background-color: #fff5f5; }
+        .status-warning { border-left: 5px solid #ffc107; background-color: #fffdf2; }
+        .status-safe { border-left: 5px solid #198754; background-color: #f8fff9; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); display: none; justify-content: center; align-items: center; z-index: 9999; }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loading-overlay"><div class="spinner-border text-primary"></div></div>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>🚀 Monitoring Sertifikasi Cloud</h3>
+        <span class="badge bg-success" id="syncStatus">Connected to Supabase</span>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card p-4 mb-3">
+                <h5>Input Data</h5>
+                <form id="certForm">
+                    <input type="text" id="nama" class="form-control mb-2" placeholder="Nama Lengkap" required>
+                    <input type="text" id="nid" class="form-control mb-2" placeholder="NID" required>
+                    <div class="row g-2">
+                        <div class="col-6"><input type="text" id="bidang" class="form-control mb-2" placeholder="Bidang" required></div>
+                        <div class="col-6"><input type="text" id="subBidang" class="form-control mb-2" placeholder="Sub" required></div>
+                    </div>
+                    <input type="text" id="sertifikat" class="form-control mb-2" placeholder="Nama Sertifikat" required>
+                    <label class="small text-muted">Tanggal Expired:</label>
+                    <input type="date" id="tglExpired" class="form-control mb-3" required>
+                    
+                    <label class="small text-muted">Upload File (Simpan di DB):</label>
+                    <input type="file" id="fileSertif" class="form-control mb-3" accept="image/*,application/pdf">
+                    
+                    <button type="submit" class="btn btn-primary w-100">Upload ke Cloud</button>
+                </form>
+            </div>
+            
+            <div class="card p-3">
+                <label class="small fw-bold">Bulk Import Excel</label>
+                <input type="file" id="importExcel" class="form-control mb-1" accept=".xlsx, .xls">
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card p-4">
+                <div class="d-flex justify-content-between mb-3">
+                    <h5 class="m-0">Data Real-time</h5>
+                    <button class="btn btn-outline-success btn-sm" onclick="exportToExcel()">📥 Download Excel</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Karyawan</th>
+                                <th>Bidang</th>
+                                <th>Sertifikat</th>
+                                <th>Expired</th>
+                                <th>Sisa Hari</th>
+                                <th>File</th>
+                                <th>Hapus</th>
+                            </tr>
+                        </thead>
+                        <tbody id="certTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // === KONFIGURASI SUPABASE ===
+    const SUPABASE_URL = "https://soohdpwdrozxsjcmbptv.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_UMsKHT3BizHizC-sG2fiDA_XeoNN3SE";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const loader = document.getElementById('loader');
+
+    // === LOAD DATA DARI SUPABASE ===
+    async function fetchData() {
+        loader.style.display = 'flex';
+        const { data, error } = await _supabase
+            .from('sertifikasi')
+            .select('*')
+            .order('tgl_expired', { ascending: true });
+        
+        if (error) console.error(error);
+        else renderTable(data);
+        loader.style.display = 'none';
+    }
+
+    function renderTable(data) {
+        const tableBody = document.getElementById('certTableBody');
+        tableBody.innerHTML = '';
+        const today = new Date();
+
+        data.forEach(item => {
+            const expDate = new Date(item.tgl_expired);
+            const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+            
+            let statusClass = diffDays < 0 ? 'status-expired' : (diffDays <= 30 ? 'status-warning' : 'status-safe');
+
+            tableBody.innerHTML += `
+                <tr class="${statusClass}">
+                    <td><strong>${item.nama}</strong><br><small class="text-muted">${item.nid}</small></td>
+                    <td>${item.bidang}<br><small>${item.sub_bidang}</small></td>
+                    <td>${item.sertifikat}</td>
+                    <td>${item.tgl_expired}</td>
+                    <td>${diffDays < 0 ? '<span class="text-danger">EXPIRED</span>' : diffDays + ' Hari'}</td>
+                    <td>
+                        ${item.file_url ? `<a href="${item.file_url}" target="_blank" class="btn btn-sm btn-light">📄</a>` : '-'}
+                    </td>
+                    <td>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteData('${item.id}')">✕</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // === INSERT DATA KE SUPABASE ===
+    document.getElementById('certForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        loader.style.display = 'flex';
+
+        const fileInput = document.getElementById('fileSertif');
+        let fileBase64 = null;
+        if (fileInput.files[0]) {
+            const reader = new FileReader();
+            fileBase64 = await new Promise(resolve => {
+                reader.readAsDataURL(fileInput.files[0]);
+                reader.onload = () => resolve(reader.result);
+            });
+        }
+
+        const payload = {
+            nama: document.getElementById('nama').value,
+            nid: document.getElementById('nid').value,
+            bidang: document.getElementById('bidang').value,
+            sub_bidang: document.getElementById('subBidang').value,
+            sertifikat: document.getElementById('sertifikat').value,
+            tgl_expired: document.getElementById('tglExpired').value,
+            file_url: fileBase64
+        };
+
+        const { error } = await _supabase.from('sertifikasi').insert([payload]);
+        
+        if (error) alert("Gagal upload: " + error.message);
+        else {
+            document.getElementById('certForm').reset();
+            fetchData();
+        }
+    });
+
+    // === DELETE DATA ===
+    async function deleteData(id) {
+        if (!confirm('Hapus data dari server?')) return;
+        loader.style.display = 'flex';
+        await _supabase.from('sertifikasi').delete().eq('id', id);
+        fetchData();
+    }
+
+    // === EXPORT EXCEL ===
+    async function exportToExcel() {
+        const { data } = await _supabase.from('sertifikasi').select('nama,nid,bidang,sub_bidang,sertifikat,tgl_expired');
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sertifikasi");
+        XLSX.writeFile(wb, "Data_Sertifikasi_Online.xlsx");
+    }
+
+    // Load awal
+    fetchData();
+</script>
+</body>
+</html>
