@@ -2,14 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+
+type Sertifikasi = {
+  id?: string
+  nama: string
+  nip: string
+  unit: string
+  jabatan: string
+  sertifikasi: string
+  tanggal_expired: string
+}
 
 export default function Home() {
-  const router = useRouter()
-
-  const [data, setData] = useState([])
+  const [data, setData] = useState<Sertifikasi[]>([])
   const [search, setSearch] = useState('')
-  const [form, setForm] = useState({
+  const [loading, setLoading] = useState(false)
+
+  const [form, setForm] = useState<Sertifikasi>({
     nama: '',
     nip: '',
     unit: '',
@@ -19,212 +28,205 @@ export default function Home() {
   })
 
   useEffect(() => {
-    checkUser()
     getData()
   }, [])
 
-  // 🔐 CEK LOGIN
-  async function checkUser() {
-    const { data } = await supabase.auth.getUser()
-    if (!data.user) {
-      router.push('/login')
-    }
-  }
-
-  // 🔔 KIRIM WA
-  async function kirimNotifikasi(item) {
-    await fetch('/api/send-wa', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        phone: '628991905928', //
-        message: `⚠️ Sertifikasi ${item.nama} akan expired pada ${item.tanggal_expired}`
-      })
-    })
-  }
-
-  // 📥 GET DATA + CEK EXPIRED
+  // 🔥 GET DATA
   async function getData() {
+    setLoading(true)
+
     const { data, error } = await supabase
       .from('sertifikasi')
       .select('*')
       .order('tanggal_expired', { ascending: true })
 
-    if (!error) {
-      setData(data)
+    console.log('DATA:', data)
+    console.log('ERROR:', error)
 
-      // 🔥 AUTO NOTIF H-7
-      data.forEach(item => {
-        const today = new Date()
-        const exp = new Date(item.tanggal_expired)
-
-        const diff = (exp - today) / (1000 * 60 * 60 * 24)
-
-        if (diff <= 7 && diff > 0) {
-          kirimNotifikasi(item)
-        }
-      })
-    }
+    if (data) setData(data)
+    setLoading(false)
   }
 
-  // ⏰ CEK EXPIRED
-  const isExpired = (date) => {
-    if (!date) return false
-    return new Date(date) < new Date()
-  }
-
-  // ➕ TAMBAH DATA
+  // 🔥 TAMBAH DATA
   async function tambahData() {
-    if (!form.nama || !form.sertifikasi || !form.tanggal_expired) {
-      alert('Isi data wajib')
+    const { error } = await supabase.from('sertifikasi').insert([form])
+
+    if (error) {
+      alert('Gagal simpan!')
+      console.log(error)
       return
     }
 
-    const { error } = await supabase
-      .from('sertifikasi')
-      .insert([
-        {
-          nama: form.nama,
-          nip: form.nip,
-          unit: form.unit,
-          jabatan: form.jabatan,
-          sertifikasi: form.sertifikasi,
-          tanggal_expired: form.tanggal_expired
-        }
-      ])
+    alert('Data berhasil ditambah')
 
-    if (error) {
-      alert('Error: ' + error.message)
-    } else {
-      alert('Data berhasil ditambah')
-      setForm({
-        nama: '',
-        nip: '',
-        unit: '',
-        jabatan: '',
-        sertifikasi: '',
-        tanggal_expired: ''
+    setForm({
+      nama: '',
+      nip: '',
+      unit: '',
+      jabatan: '',
+      sertifikasi: '',
+      tanggal_expired: ''
+    })
+
+    getData()
+  }
+
+  // 🔥 KIRIM WA
+  async function kirimWA(item: Sertifikasi) {
+    try {
+      const res = await fetch('/api/send-wa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: '628991905928',
+          message: `⚠️ Sertifikasi ${item.nama} akan expired pada ${item.tanggal_expired}`
+        })
       })
-      getData()
+
+      const result = await res.json()
+      console.log('WA RESULT:', result)
+
+      alert('WA dikirim')
+    } catch (err) {
+      console.error(err)
+      alert('Gagal kirim WA')
     }
   }
 
-  // 🔍 SEARCH
-  const filteredData = data.filter((item) =>
+  // 🔥 FILTER
+  const filtered = data.filter(item =>
     item.nama?.toLowerCase().includes(search.toLowerCase())
   )
 
-  // 📊 DASHBOARD
-  const total = data.length
-  const expired = data.filter(item => isExpired(item.tanggal_expired)).length
-  const aktif = total - expired
-
   return (
-    <div style={{ padding: 20 }}>
-      <h1>📊 Monitoring Sertifikasi</h1>
+    <div style={{ padding: 30, background: '#f5f7fb', minHeight: '100vh' }}>
 
-      {/* DASHBOARD */}
-      <div style={{ marginBottom: 20 }}>
-        <p>Total: {total}</p>
-        <p style={{ color: 'green' }}>Aktif: {aktif}</p>
-        <p style={{ color: 'red' }}>Expired: {expired}</p>
-      </div>
+      <h1 style={{ fontSize: 28, marginBottom: 20 }}>
+        📊 Monitoring Sertifikasi
+      </h1>
 
       {/* SEARCH */}
       <input
-        placeholder="Cari nama..."
+        placeholder="🔍 Cari nama..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        style={{
+          padding: 10,
+          width: '100%',
+          marginBottom: 20,
+          borderRadius: 8,
+          border: '1px solid #ddd'
+        }}
       />
 
-      <br /><br />
-
       {/* FORM */}
-      <div style={{ marginBottom: 20 }}>
-        <input
-          placeholder="Nama"
-          value={form.nama}
-          onChange={(e) =>
-            setForm({ ...form, nama: e.target.value })
-          }
-        />
+      <div style={{
+        background: 'white',
+        padding: 20,
+        borderRadius: 12,
+        marginBottom: 20
+      }}>
+        <h3>➕ Tambah Data</h3>
 
-        <input
-          placeholder="NIP"
-          value={form.nip}
-          onChange={(e) =>
-            setForm({ ...form, nip: e.target.value })
-          }
-        />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gap: 10
+        }}>
+          <input placeholder="Nama" value={form.nama}
+            onChange={e => setForm({ ...form, nama: e.target.value })} />
 
-        <input
-          placeholder="Unit"
-          value={form.unit}
-          onChange={(e) =>
-            setForm({ ...form, unit: e.target.value })
-          }
-        />
+          <input placeholder="NIP" value={form.nip}
+            onChange={e => setForm({ ...form, nip: e.target.value })} />
 
-        <input
-          placeholder="Jabatan"
-          value={form.jabatan}
-          onChange={(e) =>
-            setForm({ ...form, jabatan: e.target.value })
-          }
-        />
+          <input placeholder="Unit" value={form.unit}
+            onChange={e => setForm({ ...form, unit: e.target.value })} />
 
-        <input
-          placeholder="Sertifikasi"
-          value={form.sertifikasi}
-          onChange={(e) =>
-            setForm({ ...form, sertifikasi: e.target.value })
-          }
-        />
+          <input placeholder="Jabatan" value={form.jabatan}
+            onChange={e => setForm({ ...form, jabatan: e.target.value })} />
 
-        <input
-          type="date"
-          value={form.tanggal_expired}
-          onChange={(e) =>
-            setForm({ ...form, tanggal_expired: e.target.value })
-          }
-        />
+          <input placeholder="Sertifikasi" value={form.sertifikasi}
+            onChange={e => setForm({ ...form, sertifikasi: e.target.value })} />
 
-        <br /><br />
+          <input type="date" value={form.tanggal_expired}
+            onChange={e => setForm({ ...form, tanggal_expired: e.target.value })} />
+        </div>
 
-        <button onClick={tambahData}>
-          ➕ Tambah Data
+        <button
+          onClick={tambahData}
+          style={{
+            marginTop: 15,
+            padding: 10,
+            background: '#2563eb',
+            color: 'white',
+            borderRadius: 8
+          }}
+        >
+          Simpan
         </button>
       </div>
 
       {/* DATA */}
-      {filteredData.length === 0 && <p>Belum ada data</p>}
+      <div style={{
+        background: 'white',
+        borderRadius: 12,
+        padding: 20
+      }}>
 
-      {filteredData.map((item) => (
-        <div
-          key={item.id}
-          style={{
-            border: '1px solid #ccc',
-            padding: 10,
-            marginBottom: 10,
-            borderRadius: 8
-          }}
-        >
-          <p><b>Nama:</b> {item.nama}</p>
-          <p><b>Sertifikasi:</b> {item.sertifikasi}</p>
-          <p><b>Expired:</b> {item.tanggal_expired}</p>
+        {loading && <p>Loading...</p>}
 
-          <p style={{
-            color: isExpired(item.tanggal_expired) ? 'red' : 'green',
-            fontWeight: 'bold'
-          }}>
-            {isExpired(item.tanggal_expired)
-              ? '❌ EXPIRED'
-              : '✅ AKTIF'}
+        {!loading && filtered.length === 0 && (
+          <p style={{ textAlign: 'center' }}>
+            ❌ Tidak ada data
           </p>
-        </div>
-      ))}
+        )}
+
+        {!loading && filtered.length > 0 && (
+          <table style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>Sertifikasi</th>
+                <th>Expired</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filtered.map(item => {
+                const diff =
+                  (new Date(item.tanggal_expired).getTime() - Date.now()) /
+                  (1000 * 60 * 60 * 24)
+
+                return (
+                  <tr key={item.id}
+                    style={{
+                      background: diff <= 7 ? '#ffe5e5' : 'white'
+                    }}>
+                    <td>{item.nama}</td>
+                    <td>{item.sertifikasi}</td>
+                    <td>{item.tanggal_expired}</td>
+                    <td>
+                      <button
+                        onClick={() => kirimWA(item)}
+                        style={{
+                          padding: 5,
+                          background: 'green',
+                          color: 'white',
+                          borderRadius: 6
+                        }}
+                      >
+                        WA
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
     </div>
   )
 }
