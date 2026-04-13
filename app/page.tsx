@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 
-// KODE KONEKSI (PASTIKAN INI BENAR)
 const SUPABASE_URL = "https://obcaawzhimpbuxcczdvu.supabase.co"; 
 const SUPABASE_KEY = "sb_publishable_cdS0vDCMl0EumviWiRaSGA_1w8p-724"; 
 
@@ -24,19 +23,12 @@ export default function App() {
 
   async function fetchData() {
     setLoading(true);
-    try {
-      const { data: res, error } = await supabase
-        .from("sertifikasi_final")
-        .select("*")
-        .order("tgl_expired", { ascending: true });
-      
-      if (error) throw error;
-      setData(res || []);
-    } catch (err) {
-      console.error("Error koneksi:", err.message);
-    } finally {
-      setLoading(false);
-    }
+    const { data: res } = await supabase
+      .from("sertifikasi_final")
+      .select("*")
+      .order("tgl_expired", { ascending: true });
+    if (res) setData(res);
+    setLoading(false);
   }
 
   const handleSubmit = async (e) => {
@@ -44,7 +36,7 @@ export default function App() {
     setLoading(true);
     const { error } = await supabase.from("sertifikasi_final").insert([formData]);
     if (error) {
-      alert("Gagal Simpan (Cek API Key): " + error.message);
+      alert("Gagal: " + error.message);
     } else {
       alert("Data Berhasil Disimpan!");
       setFormData({ nama: "", nid: "", bidang: "", sub_bidang: "", sertifikat: "", tgl_expired: "" });
@@ -53,9 +45,20 @@ export default function App() {
     setLoading(false);
   };
 
+  // --- FITUR HAPUS DATA ---
+  const deleteData = async (id) => {
+    if (confirm("Apakah Anda yakin ingin menghapus data ini?")) {
+      const { error } = await supabase.from("sertifikasi_final").delete().eq("id", id);
+      if (error) {
+        alert("Gagal menghapus: " + error.message);
+      } else {
+        fetchData();
+      }
+    }
+  };
+
   const filteredData = data.filter((item) => {
-    const searchStr = searchTerm.toLowerCase().trim();
-    if (!searchStr) return true;
+    const searchStr = searchTerm.toLowerCase();
     return (
       item.nama?.toLowerCase().includes(searchStr) ||
       item.nid?.toLowerCase().includes(searchStr) ||
@@ -82,29 +85,31 @@ export default function App() {
         <h2 className="text-center fw-bold mb-4 text-primary">MONITORING SERTIFIKASI ONLINE</h2>
         
         <div className="row justify-content-center">
-          <div className="col-md-4 mb-4">
-            <div className="card shadow-sm border-0 p-4 sticky-top" style={{ top: "20px" }}>
-              <h5 className="fw-bold mb-3">Input Data Baru</h5>
+          {/* FORM INPUT */}
+          <div className="col-md-3 mb-4">
+            <div className="card shadow-sm border-0 p-3 sticky-top" style={{ top: "20px" }}>
+              <h6 className="fw-bold mb-3">Input Data Baru</h6>
               <form onSubmit={handleSubmit}>
-                <input type="text" className="form-control mb-2" placeholder="Nama" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} required />
-                <input type="text" className="form-control mb-2" placeholder="NID" value={formData.nid} onChange={e => setFormData({...formData, nid: e.target.value})} required />
-                <input type="text" className="form-control mb-2" placeholder="Bidang" value={formData.bidang} onChange={e => setFormData({...formData, bidang: e.target.value})} required />
-                <input type="text" className="form-control mb-2" placeholder="Sub Bidang" value={formData.sub_bidang} onChange={e => setFormData({...formData, sub_bidang: e.target.value})} required />
-                <input type="text" className="form-control mb-2" placeholder="Sertifikat" value={formData.sertifikat} onChange={e => setFormData({...formData, sertifikat: e.target.value})} required />
-                <input type="date" className="form-control mb-3" value={formData.tgl_expired} onChange={e => setFormData({...formData, tgl_expired: e.target.value})} required />
-                <button type="submit" className="btn btn-primary w-100 fw-bold">{loading ? "Proses..." : "SIMPAN DATA"}</button>
+                <input type="text" className="form-control form-control-sm mb-2" placeholder="Nama" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} required />
+                <input type="text" className="form-control form-control-sm mb-2" placeholder="NID" value={formData.nid} onChange={e => setFormData({...formData, nid: e.target.value})} required />
+                <input type="text" className="form-control form-control-sm mb-2" placeholder="Bidang" value={formData.bidang} onChange={e => setFormData({...formData, bidang: e.target.value})} required />
+                <input type="text" className="form-control form-control-sm mb-2" placeholder="Sub Bidang" value={formData.sub_bidang} onChange={e => setFormData({...formData, sub_bidang: e.target.value})} required />
+                <input type="text" className="form-control form-control-sm mb-2" placeholder="Sertifikat" value={formData.sertifikat} onChange={e => setFormData({...formData, sertifikat: e.target.value})} required />
+                <input type="date" className="form-control form-control-sm mb-3" value={formData.tgl_expired} onChange={e => setFormData({...formData, tgl_expired: e.target.value})} required />
+                <button type="submit" className="btn btn-primary btn-sm w-100 fw-bold">SIMPAN DATA</button>
               </form>
             </div>
           </div>
 
-          <div className="col-md-8">
-            <div className="card shadow-sm border-0 p-4">
-              <div className="d-flex justify-content-between align-items-center mb-4">
-                <h5 className="fw-bold m-0">Data Terdaftar</h5>
+          {/* TABEL DATA */}
+          <div className="col-md-9">
+            <div className="card shadow-sm border-0 p-3">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h6 className="fw-bold m-0">Data Terdaftar</h6>
                 <div className="d-flex gap-2">
                   <input 
                     type="text" 
-                    className="form-control form-control-sm border-primary" 
+                    className="form-control form-control-sm" 
                     placeholder="Cari..." 
                     style={{ width: "150px" }}
                     value={searchTerm}
@@ -115,23 +120,31 @@ export default function App() {
               </div>
 
               <div className="table-responsive">
-                <table className="table table-hover border">
-                  <thead className="table-dark text-center">
-                    <tr><th>Nama/NID</th><th>Sertifikat</th><th>Expired</th><th>Aksi</th></tr>
+                <table className="table table-sm table-hover border">
+                  <thead className="table-dark small">
+                    <tr>
+                      <th>Nama / NID</th>
+                      <th>Bidang / Sub</th>
+                      <th>Sertifikat</th>
+                      <th>Expired</th>
+                      <th className="text-center">Aksi</th>
+                    </tr>
                   </thead>
-                  <tbody className="align-middle">
+                  <tbody className="small align-middle">
                     {filteredData.length === 0 ? (
-                      <tr><td colSpan="4" className="text-center py-4 text-muted">Data tidak ditemukan.</td></tr>
+                      <tr><td colSpan="5" className="text-center py-4 text-muted">Data tidak ditemukan.</td></tr>
                     ) : (
                       filteredData.map((item) => (
                         <tr key={item.id}>
-                          <td><strong>{item.nama}</strong><br/><small>{item.nid}</small></td>
+                          <td><strong>{item.nama}</strong><br/><span className="text-muted">{item.nid}</span></td>
+                          <td>{item.bidang}<br/><span className="text-muted">{item.sub_bidang}</span></td>
                           <td>{item.sertifikat}</td>
+                          <td><span className={`badge ${getBadgeClass(item.tgl_expired)}`}>{item.tgl_expired}</span></td>
                           <td className="text-center">
-                            <span className={`badge ${getBadgeClass(item.tgl_expired)} px-3 py-2`}>{item.tgl_expired}</span>
-                          </td>
-                          <td className="text-center">
-                            <button onClick={() => sendWhatsApp(item)} className="btn btn-outline-success btn-sm">WA</button>
+                            <div className="d-flex gap-1 justify-content-center">
+                              <button onClick={() => sendWhatsApp(item)} className="btn btn-outline-success btn-xs px-2 py-1" style={{ fontSize: '10px' }}>WA</button>
+                              <button onClick={() => deleteData(item.id)} className="btn btn-outline-danger btn-xs px-2 py-1" style={{ fontSize: '10px' }}>Hapus</button>
+                            </div>
                           </td>
                         </tr>
                       ))
