@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 
-// KONFIGURASI DENGAN API KEY HURUF 'l'
 const SUPABASE_URL = "https://obcaawzhimpbuxcczdvu.supabase.co"; 
 const SUPABASE_KEY = "sb_publishable_cdS0vDCMl0EumviWiRaSGA_1w8p-724"; 
 
@@ -15,6 +14,7 @@ export default function App() {
   const [data, setData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editId, setEditId] = useState(null); // State untuk melacak data yang sedang diedit
   const [formData, setFormData] = useState({
     nama: "", nid: "", bidang: "", sub_bidang: "",
     sertifikat: "", tgl_expired: ""
@@ -35,21 +35,49 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.from("sertifikasi_final").insert([formData]);
-    if (error) {
-      alert("Gagal: " + error.message);
+
+    if (editId) {
+      // LOGIKA UPDATE DATA
+      const { error } = await supabase
+        .from("sertifikasi_final")
+        .update(formData)
+        .eq("id", editId);
+      
+      if (error) alert("Gagal Update: " + error.message);
+      else {
+        alert("Data Berhasil Diperbarui!");
+        setEditId(null);
+      }
     } else {
-      alert("Data Berhasil Disimpan!");
-      setFormData({ nama: "", nid: "", bidang: "", sub_bidang: "", sertifikat: "", tgl_expired: "" });
-      fetchData();
+      // LOGIKA INSERT DATA BARU
+      const { error } = await supabase.from("sertifikasi_final").insert([formData]);
+      if (error) alert("Gagal Simpan: " + error.message);
+      else alert("Data Berhasil Disimpan!");
     }
+
+    setFormData({ nama: "", nid: "", bidang: "", sub_bidang: "", sertifikat: "", tgl_expired: "" });
+    fetchData();
     setLoading(false);
+  };
+
+  // FUNGSI UNTUK MEMICU MODE EDIT
+  const handleEdit = (item) => {
+    setEditId(item.id);
+    setFormData({
+      nama: item.nama,
+      nid: item.nid,
+      bidang: item.bidang,
+      sub_bidang: item.sub_bidang,
+      sertifikat: item.sertifikat,
+      tgl_expired: item.tgl_expired
+    });
+    window.scrollTo(0, 0); // Scroll ke atas agar form terlihat
   };
 
   const deleteData = async (id) => {
     if (confirm("Yakin ingin menghapus data ini?")) {
       const { error } = await supabase.from("sertifikasi_final").delete().eq("id", id);
-      if (error) alert("Gagal hapus data");
+      if (error) alert("Gagal hapus");
       else fetchData();
     }
   };
@@ -82,10 +110,9 @@ export default function App() {
         <h2 className="text-center fw-bold mb-4 text-primary">MONITORING SERTIFIKASI ONLINE</h2>
         
         <div className="row justify-content-center">
-          {/* FORM INPUT DATA */}
           <div className="col-md-3 mb-4">
-            <div className="card shadow-sm border-0 p-3 sticky-top" style={{ top: "20px" }}>
-              <h6 className="fw-bold mb-3 small">Input Data Baru</h6>
+            <div className={`card shadow-sm border-0 p-3 sticky-top ${editId ? 'border-warning' : ''}`} style={{ top: "20px" }}>
+              <h6 className="fw-bold mb-3 small">{editId ? "📝 Edit Data" : "➕ Input Data Baru"}</h6>
               <form onSubmit={handleSubmit}>
                 <input type="text" className="form-control form-control-sm mb-2" placeholder="Nama" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} required />
                 <input type="text" className="form-control form-control-sm mb-2" placeholder="NID" value={formData.nid} onChange={e => setFormData({...formData, nid: e.target.value})} required />
@@ -93,12 +120,17 @@ export default function App() {
                 <input type="text" className="form-control form-control-sm mb-2" placeholder="Sub Bidang" value={formData.sub_bidang} onChange={e => setFormData({...formData, sub_bidang: e.target.value})} required />
                 <input type="text" className="form-control form-control-sm mb-2" placeholder="Sertifikat" value={formData.sertifikat} onChange={e => setFormData({...formData, sertifikat: e.target.value})} required />
                 <input type="date" className="form-control form-control-sm mb-3" value={formData.tgl_expired} onChange={e => setFormData({...formData, tgl_expired: e.target.value})} required />
-                <button type="submit" className="btn btn-primary btn-sm w-100 fw-bold">SIMPAN DATA</button>
+                
+                <button type="submit" className={`btn btn-sm w-100 fw-bold ${editId ? 'btn-warning' : 'btn-primary'}`}>
+                  {loading ? "Proses..." : (editId ? "UPDATE DATA" : "SIMPAN DATA")}
+                </button>
+                {editId && (
+                  <button type="button" className="btn btn-link btn-sm w-100 mt-1 text-decoration-none" onClick={() => {setEditId(null); setFormData({nama:"",nid:"",bidang:"",sub_bidang:"",sertifikat:"",tgl_expired:""})}}>Batal Edit</button>
+                )}
               </form>
             </div>
           </div>
 
-          {/* TABEL HASIL DENGAN KOLOM BIDANG & TOMBOL HAPUS */}
           <div className="col-md-9">
             <div className="card shadow-sm border-0 p-3">
               <div className="d-flex justify-content-between align-items-center mb-3">
@@ -121,24 +153,21 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody style={{ fontSize: '11px' }} className="align-middle">
-                    {filteredData.length === 0 ? (
-                      <tr><td colSpan="5" className="text-center py-4 text-muted">Data tidak ditemukan.</td></tr>
-                    ) : (
-                      filteredData.map((item) => (
-                        <tr key={item.id}>
-                          <td><strong>{item.nama}</strong><br/><span className="text-muted">{item.nid}</span></td>
-                          <td>{item.bidang}<br/><span className="text-muted">{item.sub_bidang}</span></td>
-                          <td>{item.sertifikat}</td>
-                          <td><span className={`badge ${getBadgeClass(item.tgl_expired)}`}>{item.tgl_expired}</span></td>
-                          <td className="text-center">
-                            <div className="d-flex gap-1 justify-content-center">
-                              <button onClick={() => sendWhatsApp(item)} className="btn btn-outline-success btn-xs py-0 px-1" style={{ fontSize: '10px' }}>WA</button>
-                              <button onClick={() => deleteData(item.id)} className="btn btn-outline-danger btn-xs py-0 px-1" style={{ fontSize: '10px' }}>Hapus</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                    {filteredData.map((item) => (
+                      <tr key={item.id}>
+                        <td><strong>{item.nama}</strong><br/><span className="text-muted">{item.nid}</span></td>
+                        <td>{item.bidang}<br/><span className="text-muted">{item.sub_bidang}</span></td>
+                        <td>{item.sertifikat}</td>
+                        <td><span className={`badge ${getBadgeClass(item.tgl_expired)}`}>{item.tgl_expired}</span></td>
+                        <td className="text-center">
+                          <div className="d-flex gap-1 justify-content-center">
+                            <button onClick={() => sendWhatsApp(item)} className="btn btn-outline-success btn-xs py-0 px-1" title="WhatsApp">WA</button>
+                            <button onClick={() => handleEdit(item)} className="btn btn-outline-primary btn-xs py-0 px-1" title="Edit">Edit</button>
+                            <button onClick={() => deleteData(item.id)} className="btn btn-outline-danger btn-xs py-0 px-1" title="Hapus">Hapus</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
