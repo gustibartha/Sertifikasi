@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Konfigurasi Supabase
+// --- KREDENSIAL BARU ---
 const supabase = createClient(
-  "https://obcaawzhimpbuxcczdvu.supabase.co", 
-  "sb_publishable_cdS0vDCMl0EumviWiRaSGA_1w8p-724"
+  "https://soohdpwdrozxsjcmbptv.supabase.co", 
+  "sb_publishable_UMsKHT3BizHizC-sG2fiDA_XeoNN3SE"
 );
 
 export default function App() {
@@ -19,11 +19,10 @@ export default function App() {
     bidang: "", 
     sub_bidang: "",
     sertifikat: "", 
-    no_sertifikat: "", // Kolom yang krusial untuk sinkronisasi
+    no_sertifikat: "", 
     tgl_expired: ""
   });
 
-  // Ambil data saat halaman dimuat
   useEffect(() => {
     fetchData();
   }, []);
@@ -35,15 +34,13 @@ export default function App() {
       .order("tgl_expired", { ascending: true });
     
     if (res) setData(res);
-    if (error) console.error("Gagal mengambil data:", error.message);
+    if (error) console.error("Fetch Error:", error.message);
   }
 
-  // Fungsi untuk menyimpan atau memperbarui data (Langkah Nomor 3)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // Payload harus menggunakan nama kolom yang persis sama dengan di database
     const payload = {
       nama: String(formData.nama || ""),
       nid: String(formData.nid || ""),
@@ -51,19 +48,17 @@ export default function App() {
       sub_bidang: String(formData.sub_bidang || ""),
       sertifikat: String(formData.sertifikat || ""),
       no_sertifikat: String(formData.no_sertifikat || ""),
-      tgl_expired: formData.tgl_expired // format date YYYY-MM-DD
+      tgl_expired: formData.tgl_expired 
     };
 
     try {
       let result;
       if (editId) {
-        // Aksi Update jika sedang mode edit
         result = await supabase
           .from("sertifikasi_final")
           .update(payload)
           .eq("id", editId);
       } else {
-        // Aksi Insert jika data baru
         result = await supabase
           .from("sertifikasi_final")
           .insert([payload]);
@@ -71,26 +66,22 @@ export default function App() {
 
       if (result.error) throw result.error;
 
-      alert(editId ? "Data Berhasil Diperbarui!" : "Data Berhasil Tersimpan ke Cloud!");
-      
-      // Reset Form
+      alert("Berhasil Terhubung ke Proyek Baru!");
       setEditId(null);
       setFormData({ 
         nama: "", nid: "", bidang: "", sub_bidang: "", 
         sertifikat: "", no_sertifikat: "", tgl_expired: "" 
       });
-      fetchData(); // Refresh tabel
+      fetchData();
 
     } catch (err) {
-      // Menampilkan pesan error spesifik jika skema belum sinkron
-      alert(`Gagal: ${err.message}\n\nSaran: Jalankan 'NOTIFY pgrst, reload schema' di SQL Editor Supabase.`);
+      alert(`Gagal: ${err.message}\nPastikan Tabel 'sertifikasi_final' sudah dibuat di proyek baru.`);
       console.error("Detail Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fungsi untuk mengisi form saat tombol Edit diklik
   const handleEdit = (item) => {
     setEditId(item.id);
     setFormData({
@@ -107,46 +98,39 @@ export default function App() {
 
   return (
     <div className="container-fluid p-4 bg-light" style={{ minHeight: "100vh" }}>
-      {/* Bootstrap CSS via CDN */}
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
       
-      <h4 className="text-center mb-4 fw-bold text-primary">MANAJEMEN SERTIFIKASI</h4>
+      <h4 className="text-center mb-4 fw-bold text-success">DATABASE SERTIFIKASI (NEW PROJECT)</h4>
       
       <div className="row justify-content-center">
-        {/* Kolom Form Input */}
         <div className="col-md-4">
           <div className="card p-4 shadow-sm border-0 rounded-3">
-            <h6 className="fw-bold mb-3">{editId ? "📝 Edit Data" : "➕ Input Data Baru"}</h6>
+            <h6 className="fw-bold mb-3">{editId ? "📝 Edit Sertifikat" : "➕ Tambah Sertifikat"}</h6>
             <form onSubmit={handleSubmit}>
               <div className="mb-2">
-                <label className="small fw-semibold text-muted">Nama Lengkap</label>
+                <label className="small fw-bold text-muted">Nama Lengkap</label>
                 <input className="form-control form-control-sm" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} required />
               </div>
               <div className="mb-2">
-                <label className="small fw-semibold text-muted">NID / NIP</label>
+                <label className="small fw-bold text-muted">NID / NIP</label>
                 <input className="form-control form-control-sm" value={formData.nid} onChange={e => setFormData({...formData, nid: e.target.value})} required />
               </div>
               <div className="mb-2">
-                <label className="small fw-semibold text-muted">Nomor Sertifikat</label>
+                <label className="small fw-bold text-muted">Nomor Sertifikat</label>
                 <input className="form-control form-control-sm" value={formData.no_sertifikat} onChange={e => setFormData({...formData, no_sertifikat: e.target.value})} required />
               </div>
               <div className="mb-3">
-                <label className="small fw-semibold text-muted">Tanggal Kedaluwarsa</label>
+                <label className="small fw-bold text-muted">Tanggal Expired</label>
                 <input type="date" className="form-control form-control-sm" value={formData.tgl_expired} onChange={e => setFormData({...formData, tgl_expired: e.target.value})} required />
               </div>
               
-              <button className={`btn btn-sm w-100 fw-bold ${editId ? 'btn-warning' : 'btn-primary'}`} disabled={loading}>
-                {loading ? "MEMPROSES..." : (editId ? "UPDATE DATA" : "SIMPAN KE CLOUD")}
+              <button className={`btn btn-sm w-100 fw-bold ${editId ? 'btn-warning' : 'btn-success'}`} disabled={loading}>
+                {loading ? "MENGHUBUNGKAN..." : (editId ? "UPDATE DATA" : "SIMPAN KE CLOUD BARU")}
               </button>
-              
-              {editId && (
-                <button type="button" onClick={() => {setEditId(null); setFormData({nama:"", nid:"", bidang:"", sub_bidang:"", sertifikat:"", no_sertifikat:"", tgl_expired:""})}} className="btn btn-link btn-sm w-100 mt-2 text-decoration-none text-muted">Batal Edit</button>
-              )}
             </form>
           </div>
         </div>
 
-        {/* Kolom Tabel Monitoring */}
         <div className="col-md-8">
           <div className="card p-3 shadow-sm border-0 rounded-3">
             <div className="table-responsive">
@@ -155,25 +139,21 @@ export default function App() {
                   <tr>
                     <th>Biodata</th>
                     <th>No. Sertifikat</th>
-                    <th>Masa Berlaku</th>
+                    <th>Status</th>
                     <th className="text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.length > 0 ? (
-                    data.map((item) => (
-                      <tr key={item.id}>
-                        <td><strong>{item.nama}</strong><br/><span className="text-muted">{item.nid}</span></td>
-                        <td><span className="text-primary fw-bold">{item.no_sertifikat || "-"}</span></td>
-                        <td><span className={`badge ${new Date(item.tgl_expired) < new Date() ? 'bg-danger' : 'bg-success'}`}>{item.tgl_expired}</span></td>
-                        <td className="text-center">
-                          <button onClick={() => handleEdit(item)} className="btn btn-outline-primary btn-xs py-0 px-2">Edit</button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="4" className="text-center py-3 text-muted">Belum ada data di cloud.</td></tr>
-                  )}
+                  {data.map((item) => (
+                    <tr key={item.id}>
+                      <td><strong>{item.nama}</strong><br/><span className="text-muted">{item.nid}</span></td>
+                      <td><span className="text-primary fw-bold">{item.no_sertifikat || "-"}</span></td>
+                      <td><span className="badge bg-danger">{item.tgl_expired}</span></td>
+                      <td className="text-center">
+                        <button onClick={() => handleEdit(item)} className="btn btn-outline-primary btn-xs py-0 px-2">Edit</button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
