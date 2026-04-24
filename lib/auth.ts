@@ -9,4 +9,7 @@ export const auth = betterAuth({
     emailAndPassword: {
         enabled: true, // Enable email and password login
     },
+    advanced: {
+        trustHost: true,
+    },
 });
