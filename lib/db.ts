@@ -3,5 +3,9 @@ import postgres from 'postgres';
 import * as schema from './schema';
 
 const connectionString = process.env.DATABASE_URL!;
-const client = postgres(connectionString, { ssl: 'require' });
+const client = postgres(connectionString, { 
+    ssl: 'require',
+    connect_timeout: 10,
+    prepare: false // Required for Supabase Transaction Mode (Port 6543)
+});
 export const db = drizzle(client, { schema });
