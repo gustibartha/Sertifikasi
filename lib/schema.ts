@@ -39,7 +39,7 @@ export const certifications = pgTable('certifications', {
 });
 
 // === Better Auth Required Schema ===
-export const user = pgTable("user", {
+export const user = pgTable("users", {
   id: text("id").primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -49,7 +49,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp('updatedAt').notNull()
 });
 
-export const session = pgTable("session", {
+export const session = pgTable("sessions", {
   id: text("id").primaryKey(),
   expiresAt: timestamp('expiresAt').notNull(),
   token: text('token').notNull().unique(),
@@ -60,7 +60,7 @@ export const session = pgTable("session", {
   userId: text('userId').notNull().references(() => user.id)
 });
 
-export const account = pgTable("account", {
+export const account = pgTable("accounts", {
   id: text("id").primaryKey(),
   accountId: text('accountId').notNull(),
   providerId: text('providerId').notNull(),
@@ -76,7 +76,7 @@ export const account = pgTable("account", {
   updatedAt: timestamp('updatedAt').notNull()
 });
 
-export const verification = pgTable("verification", {
+export const verification = pgTable("verifications", {
   id: text("id").primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
