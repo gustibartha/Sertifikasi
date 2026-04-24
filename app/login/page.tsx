@@ -21,10 +21,12 @@ export default function LoginPage() {
     setError("");
 
     try {
+      console.log("Mencoba login...");
       const { data, error: signInError } = await authClient.signIn.email({
         email: nid, 
         password,
       });
+      console.log("Respon Login:", { data, error: signInError });
 
       if (signInError) {
         setError(signInError.message || "Gagal masuk. Periksa kembali NID/Email dan Password Anda.");
