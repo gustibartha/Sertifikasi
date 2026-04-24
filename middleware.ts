@@ -1,11 +1,10 @@
 import { auth } from "@/lib/auth";
-import { nextCookies } from "better-auth/next-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 export default async function middleware(request: NextRequest) {
     // 1. Dapatkan session menggunakan better-auth
     const session = await auth.api.getSession({
-        headers: await nextCookies(request)
+        headers: request.headers
     });
 
     // 2. Tentukan path yang sedang diakses
