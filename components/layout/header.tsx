@@ -47,12 +47,8 @@ export function Header() {
         </Button>
         
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-10 w-10 rounded-full p-0 overflow-hidden border shadow-sm">
-              <div className="h-full w-full bg-slate-100 flex items-center justify-center text-slate-600">
-                <UserCircle className="h-8 w-8" />
-              </div>
-            </Button>
+          <DropdownMenuTrigger className="h-10 w-10 rounded-full p-0 overflow-hidden border shadow-sm flex items-center justify-center bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+            <UserCircle className="h-8 w-8" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Akun Saya</DropdownMenuLabel>
