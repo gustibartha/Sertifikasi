@@ -1,0 +1,273 @@
+# PRD — Project Requirements Document
+
+## 1. Overview
+Pengelolaan data karyawan, pelacakan riwayat pelatihan, dan masa berlaku sertifikasi seringkali rumit jika dilakukan secara manual. Aplikasi ini dirancang untuk menyelesaikan masalah tersebut dengan menyediakan satu platform terpusat (berbasis *Dashboard*) bagi divisi HR atau Manajemen. 
+
+Tujuan utama dari aplikasi ini adalah untuk memantau data demografi karyawan (seperti usia, jabatan, departemen, dan estimasi waktu pensiun) sekaligus melacak status sertifikasi dan pelatihan mereka. Dengan adanya sistem notifikasi (WhatsApp & Email), perusahaan tidak akan lagi melewatkan masa perpanjangan sertifikasi karyawan yang penting.
+
+## 2. Requirements
+- **Platform:** Aplikasi dapat diakses melalui Web Browser standar dan sebagai Desktop App.
+- **Skala Akses:** Dioptimalkan untuk tim pengelola berskala kecil hingga menengah (kurang dari 50 admin/pengguna aktif sistem).
+- **Keamanan:** Autentikasi dasar menggunakan Email dan Password.
+- **Pengelolaan Data:** Mendukung integrasi API (untuk mengambil data dari sistem HR eksternal jika ada) dan fitur Upload File (seperti Excel/CSV untuk input data massal atau PDF untuk dokumen sertifikat).
+- **Komunikasi/Notifikasi:** Sistem harus bisa mengirimkan pengingat atau peringatan otomatis melalui WhatsApp dan Email.
+- **Antarmuka (UI):** Fokus pada tampilan *Dashboard* yang merangkum data dalam bentuk grafik dan tabel statistik.
+
+## 3. Prioritas MVP (Minimum Viable Product)
+Untuk memastikan peluncuran cepat dan validasi fungsi inti, pengembangan akan difokuskan pada fitur-fitur kritis berikut yang wajib ada pada rilis pertama:
+
+### 3.1. Manajemen Data Karyawan (Wajib)
+- **Fungsi:** CRUD (Create, Read, Update, Delete) data karyawan.
+- **Input Massal:** Fitur impor data via Excel/CSV wajib ada untuk efisiensi awal.
+- **Kalkulasi:** Sistem harus otomatis menghitung usia dan estimasi pensiun berdasarkan Tanggal Lahir yang diinput.
+- **Prioritas:** P0 (Critical).
+
+### 3.2. Pelacakan Sertifikasi (Wajib)
+- **Fungsi:** Mencatat nama pelatihan, tanggal perolehan, dan tanggal kedaluwarsa.
+- **Dokumen:** Unggah file PDF bukti sertifikat wajib berfungsi.
+- **Logika:** Sistem harus mampu mendeteksi status "Aktif", "Segera Habis", dan "Kadaluwarsa".
+- **Prioritas:** P0 (Critical).
+
+### 3.3. Dashboard Dasar (Wajib)
+- **Fungsi:** Menampilkan ringkasan statistik utama.
+- **Metrik:** Total karyawan, jumlah sertifikat akan habis dalam 30 hari, dan jumlah karyawan pensiun dalam 1 tahun.
+- **Tampilan:** Tabel daftar peringatan (alert list) harus terlihat langsung saat login.
+- **Prioritas:** P0 (Critical).
+
+### 3.4. Notifikasi Email & WhatsApp (Wajib)
+- **Fungsi:** Mengirim pengingat otomatis.
+- **Trigger:** H-30 dan H-14 sebelum kedaluwarsa sertifikasi.
+- **Channel:** Integrasi dasar dengan API Email (SMTP/Service) dan WhatsApp Gateway.
+- **Prioritas:** P1 (High) - Harus ada saat MVP launch untuk nilai utama produk.
+
+## 4. Core Features
+- **Dashboard Ringkasan (Executive Dashboard):**
+  - Menampilkan total karyawan, grafik distribusi usia, dan status sertifikasi.
+  - Daftar perpanjangan (*renewal*) sertifikasi yang akan segera kedaluwarsa.
+  - Daftar karyawan yang mendekati masa pensiun.
+- **Manajemen Data Pegawai (Employee Directory):**
+  - Pencatatan lengkap: Nama, NID (Nomor Induk Dosen/Pegawai), Jabatan, Sub-bidang, Bidang, Grade, Jenjang Jabatan, dan Tanggal Jabatan.
+  - Kalkulasi otomatis: Menghitung Usia karyawan saat ini dan Jarak Waktu menuju Tanggal Pensiun berdasarkan Tanggal Lahir.
+- **Pelacakan Pelatihan & Sertifikasi (Training Tracker):**
+  - Mencatat riwayat pelatihan setiap karyawan.
+  - Mengunggah file bukti sertifikat.
+  - Menetapkan batas waktu (*expiry date*) sertifikasi.
+- **Sistem Peringatan Otomatis (Smart Notifications):**
+  - Mengirim notifikasi H-30 atau H-14 masa habis sertifikat dan pengingat masa pensiun melalui WhatsApp dan Email.
+- **Import/Export Data:**
+  - Fitur unggah file CSV/Excel untuk menambahkan banyak data pegawai sekaligus tanpa perlu input manual satu per satu.
+
+## 5. User Flow
+1. **Login:** Admin atau staf HR masuk ke aplikasi menggunakan Email dan Password.
+2. **Dashboard View:** Admin langsung disambut oleh Dashboard yang menunjukkan peringatan (misal: "Ada 5 sertifikat kedaluwarsa bulan ini" dan "3 pegawai akan pensiun tahun ini").
+3. **Input Data Karyawan:** 
+   - Admin masuk ke menu "Pegawai".
+   - Admin melakukan *Upload File* Excel berisi daftar pegawai baru, atau menambahkannya secara manual.
+4. **Input Sertifikasi:** Admin memilih profil seorang pegawai, lalu menambahkan data "Pelatihan K3", memasukkan tanggal kedaluwarsa, dan mengunggah dokumen PDF.
+5. **Notifikasi:** Ketika masa kedaluwarsa sertifikat tersisa 30 hari, sistem secara interaktif mengirimkan pesan peringatan via WhatsApp dan Email ke Admin/Pegawai yang bersangkutan.
+
+## 6. Architecture
+Aplikasi ini menggunakan arsitektur *Client-Server* sederhana yang digabungkan layanan pihak ketiga untuk notifikasi. Aplikasi desktop akan berjalan sebagai pembungkus (*wrapper*) dari aplikasi web sehingga data tetap tersinkronisasi.
+
+```mermaid
+sequenceDiagram
+    participant U as User (Admin/HR)
+    participant F as Frontend (Web/Desktop)
+    participant B as Backend Server
+    participant DB as Database (SQLite)
+    participant N as Notification Service (WA/Email)
+
+    U->>F: Login & Buka Dashboard
+    F->>B: Minta data statistik & alerts
+    B->>DB: Query data pegawai & sertifikat
+    DB-->>B: Kembalikan data
+    B-->>F: Tampilkan di layar pengguna
+    
+    Note over B, N: Proses Otomatis (Background Job)
+    B->>DB: Cek sertifikat kedaluwarsa hari ini
+    DB-->>B: Data sertifikat Expired
+    B->>N: Trigger kirim pesan WhatsApp & Email
+    N-->>U: Terima pesan peringatan
+```
+
+## 7. Database Schema
+Berikut adalah struktur inti dari penyimpanan data aplikasi.
+
+- **Users:** Untuk menyimpan data admin yang bisa login ke aplikasi.
+- **Employees:** Menyimpan data inti demografi dan pekerjaan karyawan.
+- **Certifications:** Menyimpan riwayat pelatihan dan sertifikasi, terhubung dengan data pegawai (Satu pegawai bisa memiliki banyak sertifikasi).
+
+```mermaid
+erDiagram
+    USERS {
+        string id PK
+        string email
+        string password_hash
+        string role
+    }
+    
+    EMPLOYEES {
+        string nid PK "Nomor Induk (Unik)"
+        string name "Nama Lengkap"
+        string jabatan "Posisi saat ini"
+        string sub_bidang "Sub Departemen"
+        string bidang "Departemen/Divisi"
+        string grade "Tingkat/Golongan"
+        string jenjang_jabatan "Level Posisi"
+        date tanggal_jabatan "Tanggal mulai posisi"
+        date tanggal_lahir "Untuk hitung usia"
+        date tanggal_pensiun "Batas masa kerja"
+    }
+
+    CERTIFICATIONS {
+        string id PK
+        string employee_nid FK "Relasi ke Pegawai"
+        string nama_pelatihan "Judul Sertifikasi"
+        date tanggal_perolehan "Kapan didapat"
+        date tanggal_kadaluarsa "Batas waktu berlaku"
+        string document_url "Link file sertifikat"
+    }
+
+    USERS ||--o{ EMPLOYEES : "mengelola"
+    EMPLOYEES ||--o{ CERTIFICATIONS : "memiliki"
+```
+
+## 8. Tech Stack & Implementasi Teknis
+Berdasarkan kebutuhan dan karena spesifikasi teknis diserahkan kepada AI, ini adalah rekomendasi teknologi modern, cepat, dan hemat biaya beserta detail implementasi codingnya.
+
+### 8.1. Teknologi Utama
+- **Aplikasi (Frontend & Backend):** Next.js (App Router). Memungkinkan rendering server-side untuk keamanan dan kecepatan.
+- **Desktop Wrapper:** Tauri v2. Menggunakan webview sistem operasi untuk performa lebih ringan dibandingkan Electron.
+- **Desain Antarmuka (UI):** Tailwind CSS & shadcn/ui. Komponen UI yang dapat diakses dan mudah dikustomisasi.
+- **Database:** SQLite (File-based). Cocok untuk deployment lokal atau server kecil tanpa konfigurasi DB server yang rumit.
+- **Database ORM:** Drizzle ORM. Type-safe dan performa tinggi untuk query SQLite.
+- **Sistem Login (Auth):** Better Auth. Menyediakan sesi yang aman dan manajemen pengguna tanpa ribet.
+- **Layanan Pihak Ketiga:** 
+  - *Email:* Resend (API pengiriman email).
+  - *WhatsApp:* Fonnte / WATS (API WhatsApp Gateway).
+
+### 8.2. Struktur Folder Project (Next.js)
+Struktur folder direkomendasikan sebagai berikut untuk menjaga kerapian kode:
+
+```text
+/app
+  /(auth)/login/page.tsx       # Halaman Login
+  /(dashboard)/page.tsx        # Halaman Utama Dashboard
+  /(dashboard)/employees/      # Modul Manajemen Karyawan
+  /(dashboard)/certifications/ # Modul Sertifikasi
+  /api/                        # Endpoint API (Webhooks, Cron)
+    /auth/                     # Route Auth Better Auth
+    /jobs/                     # Route untuk Background Job (Notifikasi)
+/components
+  /ui/                         # Komponen shadcn (Button, Table, Card)
+  /charts/                     # Komponen Grafik (Recharts)
+/lib
+  db.ts                        # Konfigurasi Drizzle & SQLite
+  schema.ts                    # Definisi Schema Database
+  utils.ts                     # Fungsi helper (Tanggal, Format)
+  notifications.ts             # Logika kirim WA & Email
+/public                        # Aset statis
+```
+
+### 8.3. Konfigurasi Environment Variables (.env)
+Pengembang harus menyiapkan file `.env` berikut untuk keamanan kredensial:
+
+```bash
+# Database
+DATABASE_URL="file:./sqlite.db"
+
+# Auth
+BETTER_AUTH_SECRET="your-secret-key"
+BETTER_AUTH_URL="http://localhost:3000"
+
+# Notifications
+RESEND_API_KEY="re_..."
+WHATSAPP_API_KEY="your-wa-token"
+WHATSAPP_API_URL="https://api.fonnte.com/send"
+
+# App
+NEXT_PUBLIC_APP_NAME="HR Sertifikasi Tracker"
+```
+
+### 8.4. Detail Implementasi Kode Kunci
+
+#### A. Schema Database (Drizzle ORM)
+Definisi tabel menggunakan TypeScript untuk keamanan tipe data:
+
+```typescript
+// lib/schema.ts
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+
+export const employees = sqliteTable('employees', {
+  nid: text('nid').primaryKey(),
+  name: text('name').notNull(),
+  tanggal_lahir: text('tanggal_lahir'), // Simpan sebagai ISO string YYYY-MM-DD
+  tanggal_pensiun: text('tanggal_pensiun'),
+  // ... kolom lainnya
+});
+
+export const certifications = sqliteTable('certifications', {
+  id: text('id').primaryKey(),
+  employee_nid: text('employee_nid').references(() => employees.nid),
+  tanggal_kadaluarsa: text('tanggal_kadaluarsa').notNull(),
+  // ... kolom lainnya
+});
+```
+
+#### B. Logika Notifikasi (Background Job)
+Karena Next.js bersifat stateless, untuk pengiriman notifikasi otomatis digunakan kombinasi `Cron Job` (via Vercel Cron atau scheduler lokal) yang memanggil API Route.
+
+```typescript
+// app/api/jobs/check-expiry/route.ts
+import { db } from '@/lib/db';
+import { certifications, employees } from '@/lib/schema';
+import { sendWhatsApp, sendEmail } from '@/lib/notifications';
+import { eq, gte, lte } from 'drizzle-orm';
+
+export async function GET() {
+  const today = new Date();
+  const targetDate = new Date();
+  targetDate.setDate(today.getDate() + 30); // Cek untuk H-30
+
+  // Ambil sertifikasi yangexpired dalam 30 hari
+  const expiringCerts = await db.query.certifications.findMany({
+    where: gte(certifications.tanggal_kadaluarsa, today.toISOString().split('T')[0]),
+    with: { employee: true }
+  });
+
+  for (const cert of expiringCerts) {
+    // Logika kirim notifikasi jika belum dikirim
+    await sendWhatsApp(cert.employee.no_hp, `Pengingat: Sertifikat ${cert.nama_pelatihan} segera habis.`);
+    await sendEmail(cert.employee.email, `Pengingat Sertifikasi`, `Sertifikat Anda segera habis.`);
+  }
+
+  return Response.json({ status: 'success', processed: expiringCerts.length });
+}
+```
+
+#### C. Konfigurasi Tauri (Desktop)
+Pada file `tauri.conf.json`, pastikan konfigurasi berikut untuk memungkinkan aplikasi berjalan sebagai desktop app:
+
+```json
+{
+  "build": {
+    "frontendDist": "../out",
+    "devUrl": "http://localhost:3000"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "HR Sertifikasi Tracker",
+        "width": 1200,
+        "height": 800,
+        "resizable": true
+      }
+    ]
+  }
+}
+```
+
+### 8.5. Strategi Deployment
+1. **Web Version:** Deploy ke Vercel atau server Node.js standar.
+2. **Desktop Version:** Jalankan perintah `npm run tauri build` untuk menghasilkan installer (.exe untuk Windows, .dmg untuk Mac).
+3. **Database:** Untuk versi desktop, file SQLite akan tersimpan lokal di mesin pengguna. Untuk versi web terpusat, file SQLite disimpan di server.
