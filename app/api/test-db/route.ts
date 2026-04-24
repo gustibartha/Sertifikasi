@@ -13,7 +13,7 @@ export async function GET() {
             message: "Koneksi Database Berhasil!", 
             data: result 
         });
-    } catch (error) {
+    } catch (error: any) {
         return NextResponse.json({ 
             status: "error", 
             message: "Koneksi Database GAGAL", 
