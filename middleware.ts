@@ -1,23 +1,21 @@
-import { auth } from "@/lib/auth";
 import { NextResponse, type NextRequest } from "next/server";
 
-export default async function middleware(request: NextRequest) {
-    // 1. Dapatkan session menggunakan better-auth
-    const session = await auth.api.getSession({
-        headers: request.headers
-    });
+export default function middleware(request: NextRequest) {
+    // 1. Dapatkan cookie session dari better-auth
+    // Nama default cookie better-auth adalah 'better-auth.session_token'
+    const sessionToken = request.cookies.get("better-auth.session_token");
 
     // 2. Tentukan path yang sedang diakses
     const { pathname } = request.nextUrl;
 
-    // 3. Logika Proteksi
-    // Jika user BELUM login dan mencoba mengakses dashboard (selain halaman login)
-    if (!session && pathname !== "/login" && !pathname.startsWith("/api")) {
+    // 3. Logika Proteksi Ringan (Edge Compatible)
+    // Jika user BELUM punya cookie dan mencoba mengakses dashboard
+    if (!sessionToken && pathname !== "/login" && !pathname.startsWith("/api")) {
         return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // Jika user SUDAH login dan mencoba mengakses halaman login
-    if (session && pathname === "/login") {
+    // Jika user SUDAH punya cookie dan mencoba mengakses halaman login
+    if (sessionToken && pathname === "/login") {
         return NextResponse.redirect(new URL("/", request.url));
     }
 
