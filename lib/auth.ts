@@ -14,6 +14,13 @@ export const auth = betterAuth({
         }
     }),
     emailAndPassword: {
-        enabled: true, // Enable email and password login
+        enabled: true, 
     },
+    secret: process.env.BETTER_AUTH_SECRET,
+    session: {
+        cookieCache: {
+            enabled: true,
+            maxAge: 60 * 60 * 24 * 7 // 7 days
+        }
+    }
 });
