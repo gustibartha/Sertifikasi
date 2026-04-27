@@ -21,7 +21,7 @@ export async function getFormasiWithActual() {
     const countsMap = new Map();
     actualCounts.forEach(item => {
       if (item.jabatan) {
-        countsMap.set(item.jabatan.trim().toLowerCase(), item.count);
+        countsMap.set(item.jabatan.trim().toLowerCase(), Number(item.count));
       }
     });
 

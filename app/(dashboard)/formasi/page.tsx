@@ -109,8 +109,8 @@ export default function FormasiPage() {
   });
 
   // Summary stats
-  const totalFormasi = data.reduce((acc, r) => acc + (r.formasiIdeal ?? 0), 0);
-  const totalBezetting = data.reduce((acc, r) => acc + (r.bezetting ?? 0), 0);
+  const totalFormasi = data.reduce((acc, r) => acc + Number(r.formasiIdeal ?? 0), 0);
+  const totalBezetting = data.reduce((acc, r) => acc + Number(r.bezetting ?? 0), 0);
   const totalKosong = data.filter((r) => r.bezetting === 0 && r.formasiIdeal !== null && r.formasiIdeal > 0).length;
   const totalKurang = data.filter((r) => r.bezetting !== null && r.formasiIdeal !== null && r.bezetting < r.formasiIdeal && r.bezetting > 0).length;
 
