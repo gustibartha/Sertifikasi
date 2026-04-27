@@ -29,6 +29,7 @@ export default function LoginPage() {
       console.log("Respon Login:", { data, error: signInError });
 
       if (signInError) {
+        console.error("FULL LOGIN ERROR:", signInError);
         setError(signInError.message || "Gagal masuk. Periksa kembali NID/Email dan Password Anda.");
         setIsLoading(false);
         return;
