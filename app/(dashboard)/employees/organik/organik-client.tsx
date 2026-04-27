@@ -55,17 +55,35 @@ import {
 import * as XLSX from "xlsx";
 import { addEmployee, deleteEmployee, importEmployeesCSV, EmployeeInput } from "@/app/actions/employee";
 
+// Helper to convert Excel Serial Date to YYYY-MM-DD
+function excelDateToJSDate(serial: any): string | null {
+  if (!serial) return null;
+  if (typeof serial === 'string' && serial.includes('-')) return serial; // Already YYYY-MM-DD
+  
+  const num = Number(serial);
+  if (isNaN(num)) return String(serial);
+
+  const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+  return date.toISOString().split('T')[0];
+}
+
 // Helper to calculate years between two dates
-function calculateYears(startDateStr: string): number {
+function calculateYears(startDateStr: string | null): number {
   if (!startDateStr) return 0;
-  const start = new Date(startDateStr);
-  const now = new Date();
-  let years = now.getFullYear() - start.getFullYear();
-  const monthDiff = now.getMonth() - start.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < start.getDate())) {
-    years--;
+  try {
+    const start = new Date(startDateStr);
+    if (isNaN(start.getTime())) return 0;
+    
+    const now = new Date();
+    let years = now.getFullYear() - start.getFullYear();
+    const monthDiff = now.getMonth() - start.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < start.getDate())) {
+      years--;
+    }
+    return Math.max(0, years);
+  } catch {
+    return 0;
   }
-  return Math.max(0, years);
 }
 
 // Excel column configuration for Organik
@@ -133,7 +151,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
         setFormData(prev => ({ ...prev, masa_kerja: years }));
       }
     }
-  }, [formData.tanggal_masuk]);
+  }, [formData.tanggal_masuk, formData.masa_kerja]);
 
   const handleInputChange = (field: keyof EmployeeInput, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -188,7 +206,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
     const reader = new FileReader();
     reader.onload = (event) => {
       const bstr = event.target?.result;
-      const wb = XLSX.read(bstr, { type: "binary" });
+      const wb = XLSX.read(bstr, { type: "binary", cellDates: false });
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws);
@@ -204,18 +222,22 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
 
     // Map fields and ensure types
     const employeeData = excelPreview.map(row => {
+      const tglLahir = excelDateToJSDate(row.tanggal_lahir || row.tgl_lahir);
+      const tglMasuk = excelDateToJSDate(row.tanggal_masuk || row.tgl_masuk);
+      const tglPensiun = excelDateToJSDate(row.tanggal_pensiun || row.tgl_pensiun);
+
       // Auto-calculate masa_kerja if tanggal_masuk exists
       let calculatedMasaKerja = Number(row.masa_kerja) || 0;
-      if (row.tanggal_masuk) {
-        calculatedMasaKerja = calculateYears(String(row.tanggal_masuk));
+      if (tglMasuk) {
+        calculatedMasaKerja = calculateYears(tglMasuk);
       }
 
       return {
         nid: String(row.nid || ""),
         name: String(row.name || row.nama || ""),
         jenis_kelamin: String(row.jenis_kelamin || "L"),
-        tanggal_lahir: row.tanggal_lahir ? String(row.tanggal_lahir) : null,
-        tanggal_masuk: row.tanggal_masuk ? String(row.tanggal_masuk) : null,
+        tanggal_lahir: tglLahir,
+        tanggal_masuk: tglMasuk,
         pendidikan: String(row.pendidikan || ""),
         grade: String(row.grade || ""),
         bidang: String(row.bidang || ""),
@@ -224,7 +246,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
         jenjang_jabatan: String(row.jenjang_jabatan || ""),
         pog: Number(row.pog) || 0,
         masa_kerja: calculatedMasaKerja,
-        tanggal_pensiun: row.tanggal_pensiun ? String(row.tanggal_pensiun) : null,
+        tanggal_pensiun: tglPensiun,
         status_aktif: String(row.status_aktif || "aktif"),
         status_pegawai: "Organik",
         email: String(row.email || ""),
@@ -287,7 +309,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                   </Button>
                 </DialogTitle>
                 <DialogDescription className="text-slate-500">
-                  Sistem akan menghitung <strong>Masa Kerja</strong> secara otomatis jika kolom <strong>tanggal_masuk</strong> diisi.
+                  Sistem akan memperbaiki format tanggal dari Excel secara otomatis.
                 </DialogDescription>
               </DialogHeader>
 
@@ -314,7 +336,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                             <TableRow>
                               <TableHead>NID</TableHead>
                               <TableHead>Nama</TableHead>
-                              <TableHead>Tgl Masuk</TableHead>
+                              <TableHead>Tgl Masuk (Raw)</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -322,7 +344,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                               <TableRow key={i} className="bg-white border-b border-slate-100">
                                 <TableCell className="text-xs font-mono">{row.nid || "-"}</TableCell>
                                 <TableCell className="text-xs font-medium">{row.name || row.nama || "-"}</TableCell>
-                                <TableCell className="text-xs">{row.tanggal_masuk || "-"}</TableCell>
+                                <TableCell className="text-xs">{row.tanggal_masuk || row.tgl_masuk || "-"}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -388,7 +410,6 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                     </div>
                   </div>
 
-                  {/* BARIS BARU: TANGGAL MASUK & MASA KERJA */}
                   <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
                     <div className="space-y-2">
                       <Label htmlFor="tgl_masuk" className="text-blue-700 font-bold flex items-center gap-2">
@@ -503,8 +524,11 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                 <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Tidak ada data ditemukan.</TableCell></TableRow>
               ) : (
                 filteredData.map((emp) => {
-                  const usia = emp.tanggal_lahir ? `${calculateYears(emp.tanggal_lahir)} Thn` : "-";
-                  const mk = emp.tanggal_masuk ? `${calculateYears(emp.tanggal_masuk)} Thn` : (emp.masa_kerja ? `${emp.masa_kerja} Thn` : "-");
+                  const usiaNum = calculateYears(emp.tanggal_lahir);
+                  const usia = usiaNum > 0 ? `${usiaNum} Thn` : "-";
+                  
+                  const mkNum = calculateYears(emp.tanggal_masuk);
+                  const mk = mkNum > 0 ? `${mkNum} Thn` : (emp.masa_kerja ? `${emp.masa_kerja} Thn` : "-");
 
                   return (
                     <TableRow key={emp.nid} className="hover:bg-slate-50/50">
