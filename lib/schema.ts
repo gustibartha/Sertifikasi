@@ -18,6 +18,7 @@ export const employees = pgTable('employees', {
   pendidikan: text('pendidikan'),
   pog: integer('pog'),
   masa_kerja: integer('masa_kerja'),
+  tanggal_masuk: text('tanggal_masuk'), // Disimpan sebagai YYYY-MM-DD
   status_aktif: text('status_aktif').default('aktif'), // 'aktif' | 'mutasi' | 'pensiun'
   email: text('email'),
   phone: text('phone'),
