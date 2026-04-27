@@ -24,7 +24,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileSpreadsheet,
-  X
+  X,
+  FileDown
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -50,72 +51,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import * as XLSX from "xlsx";
 import { addEmployee, deleteEmployee, importEmployeesCSV, EmployeeInput } from "@/app/actions/employee";
 
-// CSV column mapping for Organik employees
-const CSV_COLUMNS: { header: string; field: keyof EmployeeInput }[] = [
-  { header: "nid", field: "nid" },
-  { header: "name", field: "name" },
-  { header: "jenis_kelamin", field: "jenis_kelamin" },
-  { header: "tanggal_lahir", field: "tanggal_lahir" },
-  { header: "pendidikan", field: "pendidikan" },
-  { header: "grade", field: "grade" },
-  { header: "bidang", field: "bidang" },
-  { header: "sub_bidang", field: "sub_bidang" },
-  { header: "jabatan", field: "jabatan" },
-  { header: "jenjang_jabatan", field: "jenjang_jabatan" },
-  { header: "pog", field: "pog" },
-  { header: "masa_kerja", field: "masa_kerja" },
-  { header: "tanggal_pensiun", field: "tanggal_pensiun" },
-  { header: "status_aktif", field: "status_aktif" },
-  { header: "email", field: "email" },
-  { header: "phone", field: "phone" },
-  { header: "keterangan", field: "keterangan" },
-];
-
-function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-  if (lines.length < 2) return [];
-  
-  // Detect delimiter (comma or semicolon)
-  const delimiter = lines[0].includes(";") ? ";" : ",";
-  
-  const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/['"]/g, ""));
-  const rows: Record<string, string>[] = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ""));
-    const row: Record<string, string> = {};
-    headers.forEach((h, idx) => {
-      row[h] = values[idx] || "";
-    });
-    rows.push(row);
+// Excel column configuration for Organik
+const EXCEL_TEMPLATE_DATA = [
+  {
+    nid: "EMP-001",
+    name: "Budi Santoso",
+    jenis_kelamin: "L",
+    tanggal_lahir: "1990-05-20",
+    pendidikan: "S1 Teknik",
+    grade: "G-10",
+    bidang: "Operasi",
+    sub_bidang: "Pemeliharaan",
+    jabatan: "Teknisi Senior",
+    jenjang_jabatan: "Senior Staff",
+    pog: 85,
+    masa_kerja: 5,
+    tanggal_pensiun: "2045-05-20",
+    status_aktif: "aktif",
+    email: "budi@pln.co.id",
+    phone: "08123456789",
+    keterangan: "-"
   }
-  return rows;
-}
-
-function mapCSVToEmployee(csvRow: Record<string, string>, statusPegawai: string): EmployeeInput {
-  return {
-    nid: csvRow["nid"] || "",
-    name: csvRow["name"] || csvRow["nama"] || "",
-    jenis_kelamin: csvRow["jenis_kelamin"] || csvRow["gender"] || "",
-    tanggal_lahir: csvRow["tanggal_lahir"] || csvRow["tgl_lahir"] || "",
-    pendidikan: csvRow["pendidikan"] || "",
-    grade: csvRow["grade"] || "",
-    bidang: csvRow["bidang"] || "",
-    sub_bidang: csvRow["sub_bidang"] || "",
-    jabatan: csvRow["jabatan"] || "",
-    jenjang_jabatan: csvRow["jenjang_jabatan"] || "",
-    pog: csvRow["pog"] ? parseInt(csvRow["pog"]) || 0 : 0,
-    masa_kerja: csvRow["masa_kerja"] ? parseInt(csvRow["masa_kerja"]) || 0 : 0,
-    tanggal_pensiun: csvRow["tanggal_pensiun"] || csvRow["tgl_pensiun"] || "",
-    status_aktif: csvRow["status_aktif"] || "aktif",
-    status_pegawai: statusPegawai,
-    email: csvRow["email"] || "",
-    phone: csvRow["phone"] || csvRow["whatsapp"] || "",
-    keterangan: csvRow["keterangan"] || "",
-  };
-}
+];
 
 export function OrganikClient({ initialData }: { initialData: any[] }) {
   const [search, setSearch] = useState("");
@@ -125,8 +85,8 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
   const [isImporting, setIsImporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [importResult, setImportResult] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
-  const [csvPreview, setCsvPreview] = useState<Record<string, string>[]>([]);
-  const [csvFileName, setCsvFileName] = useState("");
+  const [excelPreview, setExcelPreview] = useState<any[]>([]);
+  const [fileName, setFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<EmployeeInput>({
@@ -152,6 +112,13 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
 
   const handleInputChange = (field: keyof EmployeeInput, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleDownloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet(EXCEL_TEMPLATE_DATA);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template Organik");
+    XLSX.writeFile(wb, "Template_Import_Organik.xlsx");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,38 +152,59 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
     }
   };
 
-  // CSV Import handlers
+  // Excel Import handlers
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    setCsvFileName(file.name);
+    setFileName(file.name);
     setImportResult(null);
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const parsed = parseCSV(text);
-      setCsvPreview(parsed);
+      const bstr = event.target?.result;
+      const wb = XLSX.read(bstr, { type: "binary" });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
+      setExcelPreview(data);
     };
-    reader.readAsText(file);
+    reader.readAsBinaryString(file);
   };
 
   const handleImport = async () => {
-    if (csvPreview.length === 0) return;
+    if (excelPreview.length === 0) return;
     setIsImporting(true);
     setImportResult(null);
 
-    const employeeData = csvPreview.map(row => mapCSVToEmployee(row, "Organik"));
-    const res = await importEmployeesCSV(employeeData);
+    // Map fields and ensure types
+    const employeeData = excelPreview.map(row => ({
+      nid: String(row.nid || ""),
+      name: String(row.name || row.nama || ""),
+      jenis_kelamin: String(row.jenis_kelamin || "L"),
+      tanggal_lahir: row.tanggal_lahir ? String(row.tanggal_lahir) : null,
+      pendidikan: String(row.pendidikan || ""),
+      grade: String(row.grade || ""),
+      bidang: String(row.bidang || ""),
+      sub_bidang: String(row.sub_bidang || ""),
+      jabatan: String(row.jabatan || ""),
+      jenjang_jabatan: String(row.jenjang_jabatan || ""),
+      pog: Number(row.pog) || 0,
+      masa_kerja: Number(row.masa_kerja) || 0,
+      tanggal_pensiun: row.tanggal_pensiun ? String(row.tanggal_pensiun) : null,
+      status_aktif: String(row.status_aktif || "aktif"),
+      status_pegawai: "Organik",
+      email: String(row.email || ""),
+      phone: String(row.phone || ""),
+      keterangan: String(row.keterangan || ""),
+    }));
+
+    const res = await importEmployeesCSV(employeeData as any);
 
     if (res.success) {
       setImportResult({ message: res.message || `Berhasil import ${res.imported} pegawai.`, type: "success" });
       setTimeout(() => {
-        setIsImportOpen(false);
-        setCsvPreview([]);
-        setCsvFileName("");
-        setImportResult(null);
+        handleCloseImport();
         window.location.reload();
       }, 2000);
     } else {
@@ -227,8 +215,8 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
 
   const handleCloseImport = () => {
     setIsImportOpen(false);
-    setCsvPreview([]);
-    setCsvFileName("");
+    setExcelPreview([]);
+    setFileName("");
     setImportResult(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -246,22 +234,28 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
           <p className="text-slate-500 mt-1">Kelola data demografi dan informasi pegawai Organik PLN NP.</p>
         </div>
         <div className="flex gap-2">
-          {/* Import CSV Dialog */}
+          {/* Import Excel Dialog */}
           <Dialog open={isImportOpen} onOpenChange={(open) => { if (!open) handleCloseImport(); else setIsImportOpen(true); }}>
-            <DialogTrigger>
+            <DialogTrigger asChild>
               <Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all">
                 <Upload className="h-4 w-4" />
-                Import CSV
+                Import Excel
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[700px] bg-white border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center gap-2">
-                  <FileSpreadsheet className="h-6 w-6 text-blue-600" />
-                  Import Data Pegawai Organik
+                <DialogTitle className="text-2xl font-bold text-slate-900 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+                    Import Data Organik (.xlsx)
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleDownloadTemplate} className="text-xs flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50">
+                    <FileDown className="h-3.5 w-3.5" />
+                    Download Template
+                  </Button>
                 </DialogTitle>
                 <DialogDescription className="text-slate-500">
-                  Upload file CSV dengan kolom: nid, name, jenis_kelamin, tanggal_lahir, pendidikan, grade, bidang, sub_bidang, jabatan, jenjang_jabatan, pog, masa_kerja, tanggal_pensiun, status_aktif, email, phone, keterangan
+                  Gunakan template Excel kami untuk hasil yang akurat. Format file harus .xlsx atau .xls.
                 </DialogDescription>
               </DialogHeader>
 
@@ -271,72 +265,70 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".csv,.txt"
+                    accept=".xlsx,.xls"
                     onChange={handleFileSelect}
                     className="hidden"
-                    id="csv-upload-organik"
+                    id="excel-upload-organik"
                   />
                   <Button 
                     variant="outline" 
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-dashed border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-50 px-6 py-8 w-full flex flex-col items-center gap-2"
+                    className="border-dashed border-2 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 px-6 py-8 w-full flex flex-col items-center gap-2"
                   >
-                    <Upload className="h-8 w-8 text-blue-500" />
+                    <Upload className="h-8 w-8 text-slate-400" />
                     <span className="text-sm font-medium">
-                      {csvFileName ? csvFileName : "Klik untuk pilih file CSV"}
+                      {fileName ? fileName : "Klik untuk pilih file Excel"}
                     </span>
-                    {csvFileName && <span className="text-xs text-emerald-600">✓ File terpilih</span>}
+                    {fileName && <span className="text-xs text-emerald-600">✓ File siap diimport</span>}
                   </Button>
                 </div>
 
                 {/* Preview */}
-                {csvPreview.length > 0 && (
+                {excelPreview.length > 0 && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between px-1">
                       <p className="text-sm font-medium text-slate-700">
-                        Preview: <span className="text-blue-600 font-bold">{csvPreview.length}</span> baris data ditemukan
+                        Preview: <span className="text-emerald-600 font-bold">{excelPreview.length}</span> baris data
                       </p>
-                      <Button variant="ghost" size="sm" onClick={() => { setCsvPreview([]); setCsvFileName(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
-                        <X className="h-4 w-4 mr-1" /> Reset
+                      <Button variant="ghost" size="sm" onClick={() => { setExcelPreview([]); setFileName(""); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="h-7 text-xs text-red-500 hover:bg-red-50">
+                        <X className="h-3.5 w-3.5 mr-1" /> Reset
                       </Button>
                     </div>
-                    <div className="rounded-md border overflow-x-auto max-h-[250px] overflow-y-auto">
-                      <Table>
-                        <TableHeader className="bg-slate-50 sticky top-0">
-                          <TableRow>
-                            <TableHead className="text-xs">#</TableHead>
-                            <TableHead className="text-xs">NID</TableHead>
-                            <TableHead className="text-xs">Nama</TableHead>
-                            <TableHead className="text-xs">Bidang</TableHead>
-                            <TableHead className="text-xs">Jabatan</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {csvPreview.slice(0, 10).map((row, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
-                              <TableCell className="text-xs font-mono">{row.nid || "-"}</TableCell>
-                              <TableCell className="text-xs font-medium">{row.name || row.nama || "-"}</TableCell>
-                              <TableCell className="text-xs">{row.bidang || "-"}</TableCell>
-                              <TableCell className="text-xs">{row.jabatan || "-"}</TableCell>
-                            </TableRow>
-                          ))}
-                          {csvPreview.length > 10 && (
+                    <div className="rounded-lg border border-slate-200 overflow-hidden shadow-inner bg-slate-50/50">
+                      <div className="max-h-[250px] overflow-y-auto">
+                        <Table>
+                          <TableHeader className="bg-slate-100 sticky top-0">
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center text-xs text-muted-foreground py-2">
-                                ... dan {csvPreview.length - 10} baris lainnya
-                              </TableCell>
+                              <TableHead className="text-[10px] uppercase font-bold text-slate-600">NID</TableHead>
+                              <TableHead className="text-[10px] uppercase font-bold text-slate-600">Nama</TableHead>
+                              <TableHead className="text-[10px] uppercase font-bold text-slate-600">Jabatan</TableHead>
                             </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {excelPreview.slice(0, 10).map((row, i) => (
+                              <TableRow key={i} className="hover:bg-white bg-white/50 border-b border-slate-100">
+                                <TableCell className="text-xs font-mono py-2">{row.nid || "-"}</TableCell>
+                                <TableCell className="text-xs font-medium py-2">{row.name || row.nama || "-"}</TableCell>
+                                <TableCell className="text-xs py-2">{row.jabatan || "-"}</TableCell>
+                              </TableRow>
+                            ))}
+                            {excelPreview.length > 10 && (
+                              <TableRow>
+                                <TableCell colSpan={3} className="text-center text-[11px] text-slate-400 py-3 italic bg-slate-50">
+                                  ... dan {excelPreview.length - 10} baris lainnya
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Import Result */}
                 {importResult && (
-                  <div className={`flex items-center gap-2 rounded-lg p-3 text-sm border ${
+                  <div className={`flex items-center gap-2 rounded-lg p-3 text-sm border shadow-sm ${
                     importResult.type === "success" 
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
                       : "bg-red-50 text-red-700 border-red-200"
@@ -347,30 +339,30 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                 )}
               </div>
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleCloseImport}>Batal</Button>
+              <DialogFooter className="bg-slate-50/80 -mx-6 -mb-6 p-6 mt-2 border-t border-slate-100">
+                <Button type="button" variant="ghost" onClick={handleCloseImport}>Batal</Button>
                 <Button 
                   onClick={handleImport} 
-                  disabled={csvPreview.length === 0 || isImporting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={excelPreview.length === 0 || isImporting}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200"
                 >
                   {isImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                  Import {csvPreview.length > 0 ? `${csvPreview.length} Data` : ""}
+                  Import {excelPreview.length > 0 ? `${excelPreview.length} Pegawai` : ""}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
           
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger>
-              <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200">
                 <Plus className="h-4 w-4" />
                 Tambah Organik
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[720px] bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[720px] bg-white border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+                <DialogTitle className="text-2xl font-bold text-slate-900">
                   Data Pegawai Organik Baru
                 </DialogTitle>
                 <DialogDescription className="text-slate-500">
@@ -585,10 +577,12 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                       <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate" title={emp.keterangan || "-"}>{emp.keterangan || "-"}</TableCell>
                       <TableCell>
                         <DropdownMenu>
-                          <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus:outline-none">
-                            <MoreHorizontal className="h-4 w-4" />
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuContent align="end" className="w-40 bg-white">
                             <DropdownMenuLabel>Aksi</DropdownMenuLabel>
                             <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50 font-medium" onClick={() => handleDelete(emp.nid)}>
                               <Trash2 className="mr-2 h-4 w-4" />
