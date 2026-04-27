@@ -234,13 +234,10 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
           <p className="text-slate-500 mt-1">Kelola data demografi dan informasi pegawai Organik PLN NP.</p>
         </div>
         <div className="flex gap-2">
-          {/* Import Excel Dialog */}
           <Dialog open={isImportOpen} onOpenChange={(open) => { if (!open) handleCloseImport(); else setIsImportOpen(true); }}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all">
+            <DialogTrigger render={<Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all" />}>
                 <Upload className="h-4 w-4" />
                 Import Excel
-              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[700px] bg-white border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -354,11 +351,9 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
           </Dialog>
           
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200">
+            <DialogTrigger render={<Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200" />}>
                 <Plus className="h-4 w-4" />
                 Tambah Organik
-              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[720px] bg-white border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
