@@ -15,8 +15,10 @@ export async function getEmployees(statusPegawai?: "Organik" | "TAD") {
     } else {
       data = await db.select().from(employees);
     }
+    console.log(`[getEmployees] Fetched ${data.length} records for status: ${statusPegawai || 'All'}`);
     return { success: true, data };
   } catch (error: any) {
+    console.error(`[getEmployees] ERROR:`, error);
     return { success: false, error: error.message };
   }
 }
