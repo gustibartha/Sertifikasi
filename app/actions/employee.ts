@@ -64,3 +64,67 @@ export async function deleteEmployee(nid: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function importEmployeesCSV(rows: EmployeeInput[]) {
+  try {
+    if (!rows || rows.length === 0) {
+      return { success: false, error: "Tidak ada data untuk diimport" };
+    }
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      try {
+        if (!row.nid || !row.name) {
+          skipped++;
+          errors.push(`Baris dengan NID "${row.nid || '(kosong)'}" dilewati: NID dan Nama wajib diisi`);
+          continue;
+        }
+
+        // Upsert: insert or update if NID already exists
+        await db.insert(employees).values(row).onConflictDoUpdate({
+          target: employees.nid,
+          set: {
+            name: row.name,
+            status_pegawai: row.status_pegawai,
+            perusahaan_asal: row.perusahaan_asal,
+            jabatan: row.jabatan,
+            bidang: row.bidang,
+            sub_bidang: row.sub_bidang,
+            grade: row.grade,
+            jenjang_jabatan: row.jenjang_jabatan,
+            tanggal_jabatan: row.tanggal_jabatan,
+            tanggal_lahir: row.tanggal_lahir,
+            tanggal_pensiun: row.tanggal_pensiun,
+            jenis_kelamin: row.jenis_kelamin,
+            pendidikan: row.pendidikan,
+            pog: row.pog,
+            masa_kerja: row.masa_kerja,
+            status_aktif: row.status_aktif,
+            email: row.email,
+            phone: row.phone,
+            keterangan: row.keterangan,
+          },
+        });
+        imported++;
+      } catch (rowError: any) {
+        skipped++;
+        errors.push(`NID "${row.nid}": ${rowError.message}`);
+      }
+    }
+
+    revalidatePath("/employees");
+    revalidatePath("/");
+    return { 
+      success: true, 
+      imported, 
+      skipped, 
+      errors: errors.slice(0, 10), // Limit error messages
+      message: `Berhasil import ${imported} pegawai${skipped > 0 ? `, ${skipped} dilewati` : ''}.`
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

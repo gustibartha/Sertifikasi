@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Table,
   TableBody,
@@ -20,7 +20,11 @@ import {
   Download,
   Edit,
   Trash2,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  FileSpreadsheet,
+  X
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,13 +50,84 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addEmployee, deleteEmployee, EmployeeInput } from "@/app/actions/employee";
+import { addEmployee, deleteEmployee, importEmployeesCSV, EmployeeInput } from "@/app/actions/employee";
+
+// CSV column mapping for Organik employees
+const CSV_COLUMNS: { header: string; field: keyof EmployeeInput }[] = [
+  { header: "nid", field: "nid" },
+  { header: "name", field: "name" },
+  { header: "jenis_kelamin", field: "jenis_kelamin" },
+  { header: "tanggal_lahir", field: "tanggal_lahir" },
+  { header: "pendidikan", field: "pendidikan" },
+  { header: "grade", field: "grade" },
+  { header: "bidang", field: "bidang" },
+  { header: "sub_bidang", field: "sub_bidang" },
+  { header: "jabatan", field: "jabatan" },
+  { header: "jenjang_jabatan", field: "jenjang_jabatan" },
+  { header: "pog", field: "pog" },
+  { header: "masa_kerja", field: "masa_kerja" },
+  { header: "tanggal_pensiun", field: "tanggal_pensiun" },
+  { header: "status_aktif", field: "status_aktif" },
+  { header: "email", field: "email" },
+  { header: "phone", field: "phone" },
+  { header: "keterangan", field: "keterangan" },
+];
+
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+  if (lines.length < 2) return [];
+  
+  // Detect delimiter (comma or semicolon)
+  const delimiter = lines[0].includes(";") ? ";" : ",";
+  
+  const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/['"]/g, ""));
+  const rows: Record<string, string>[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ""));
+    const row: Record<string, string> = {};
+    headers.forEach((h, idx) => {
+      row[h] = values[idx] || "";
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function mapCSVToEmployee(csvRow: Record<string, string>, statusPegawai: string): EmployeeInput {
+  return {
+    nid: csvRow["nid"] || "",
+    name: csvRow["name"] || csvRow["nama"] || "",
+    jenis_kelamin: csvRow["jenis_kelamin"] || csvRow["gender"] || "",
+    tanggal_lahir: csvRow["tanggal_lahir"] || csvRow["tgl_lahir"] || "",
+    pendidikan: csvRow["pendidikan"] || "",
+    grade: csvRow["grade"] || "",
+    bidang: csvRow["bidang"] || "",
+    sub_bidang: csvRow["sub_bidang"] || "",
+    jabatan: csvRow["jabatan"] || "",
+    jenjang_jabatan: csvRow["jenjang_jabatan"] || "",
+    pog: csvRow["pog"] ? parseInt(csvRow["pog"]) || 0 : 0,
+    masa_kerja: csvRow["masa_kerja"] ? parseInt(csvRow["masa_kerja"]) || 0 : 0,
+    tanggal_pensiun: csvRow["tanggal_pensiun"] || csvRow["tgl_pensiun"] || "",
+    status_aktif: csvRow["status_aktif"] || "aktif",
+    status_pegawai: statusPegawai,
+    email: csvRow["email"] || "",
+    phone: csvRow["phone"] || csvRow["whatsapp"] || "",
+    keterangan: csvRow["keterangan"] || "",
+  };
+}
 
 export function OrganikClient({ initialData }: { initialData: any[] }) {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [importResult, setImportResult] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [csvPreview, setCsvPreview] = useState<Record<string, string>[]>([]);
+  const [csvFileName, setCsvFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<EmployeeInput>({
     nid: "",
@@ -95,6 +170,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
         jabatan: "", jenjang_jabatan: "", pog: 0, masa_kerja: 0,
         status_aktif: "aktif", status_pegawai: "Organik", email: "", phone: "", keterangan: "", tanggal_pensiun: ""
       });
+      window.location.reload();
     } else {
       setErrorMsg(res.error || "Gagal menyimpan data");
     }
@@ -105,7 +181,56 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
   const handleDelete = async (nid: string) => {
     if (confirm("Yakin ingin menghapus pegawai ini? Semua sertifikasi terkait juga akan terhapus.")) {
       await deleteEmployee(nid);
+      window.location.reload();
     }
+  };
+
+  // CSV Import handlers
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setCsvFileName(file.name);
+    setImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const parsed = parseCSV(text);
+      setCsvPreview(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    if (csvPreview.length === 0) return;
+    setIsImporting(true);
+    setImportResult(null);
+
+    const employeeData = csvPreview.map(row => mapCSVToEmployee(row, "Organik"));
+    const res = await importEmployeesCSV(employeeData);
+
+    if (res.success) {
+      setImportResult({ message: res.message || `Berhasil import ${res.imported} pegawai.`, type: "success" });
+      setTimeout(() => {
+        setIsImportOpen(false);
+        setCsvPreview([]);
+        setCsvFileName("");
+        setImportResult(null);
+        window.location.reload();
+      }, 2000);
+    } else {
+      setImportResult({ message: res.error || "Gagal import data", type: "error" });
+    }
+    setIsImporting(false);
+  };
+
+  const handleCloseImport = () => {
+    setIsImportOpen(false);
+    setCsvPreview([]);
+    setCsvFileName("");
+    setImportResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const filteredData = initialData.filter(emp => 
@@ -121,10 +246,120 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
           <p className="text-slate-500 mt-1">Kelola data demografi dan informasi pegawai Organik PLN NP.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all">
-            <Upload className="h-4 w-4" />
-            Import CSV
-          </Button>
+          {/* Import CSV Dialog */}
+          <Dialog open={isImportOpen} onOpenChange={(open) => { if (!open) handleCloseImport(); else setIsImportOpen(true); }}>
+            <DialogTrigger>
+              <Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all">
+                <Upload className="h-4 w-4" />
+                Import CSV
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[700px] bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center gap-2">
+                  <FileSpreadsheet className="h-6 w-6 text-blue-600" />
+                  Import Data Pegawai Organik
+                </DialogTitle>
+                <DialogDescription className="text-slate-500">
+                  Upload file CSV dengan kolom: nid, name, jenis_kelamin, tanggal_lahir, pendidikan, grade, bidang, sub_bidang, jabatan, jenjang_jabatan, pog, masa_kerja, tanggal_pensiun, status_aktif, email, phone, keterangan
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                {/* File Input */}
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.txt"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="csv-upload-organik"
+                  />
+                  <Button 
+                    variant="outline" 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-dashed border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-50 px-6 py-8 w-full flex flex-col items-center gap-2"
+                  >
+                    <Upload className="h-8 w-8 text-blue-500" />
+                    <span className="text-sm font-medium">
+                      {csvFileName ? csvFileName : "Klik untuk pilih file CSV"}
+                    </span>
+                    {csvFileName && <span className="text-xs text-emerald-600">✓ File terpilih</span>}
+                  </Button>
+                </div>
+
+                {/* Preview */}
+                {csvPreview.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-slate-700">
+                        Preview: <span className="text-blue-600 font-bold">{csvPreview.length}</span> baris data ditemukan
+                      </p>
+                      <Button variant="ghost" size="sm" onClick={() => { setCsvPreview([]); setCsvFileName(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
+                        <X className="h-4 w-4 mr-1" /> Reset
+                      </Button>
+                    </div>
+                    <div className="rounded-md border overflow-x-auto max-h-[250px] overflow-y-auto">
+                      <Table>
+                        <TableHeader className="bg-slate-50 sticky top-0">
+                          <TableRow>
+                            <TableHead className="text-xs">#</TableHead>
+                            <TableHead className="text-xs">NID</TableHead>
+                            <TableHead className="text-xs">Nama</TableHead>
+                            <TableHead className="text-xs">Bidang</TableHead>
+                            <TableHead className="text-xs">Jabatan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {csvPreview.slice(0, 10).map((row, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                              <TableCell className="text-xs font-mono">{row.nid || "-"}</TableCell>
+                              <TableCell className="text-xs font-medium">{row.name || row.nama || "-"}</TableCell>
+                              <TableCell className="text-xs">{row.bidang || "-"}</TableCell>
+                              <TableCell className="text-xs">{row.jabatan || "-"}</TableCell>
+                            </TableRow>
+                          ))}
+                          {csvPreview.length > 10 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-xs text-muted-foreground py-2">
+                                ... dan {csvPreview.length - 10} baris lainnya
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Import Result */}
+                {importResult && (
+                  <div className={`flex items-center gap-2 rounded-lg p-3 text-sm border ${
+                    importResult.type === "success" 
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}>
+                    {importResult.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                    {importResult.message}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleCloseImport}>Batal</Button>
+                <Button 
+                  onClick={handleImport} 
+                  disabled={csvPreview.length === 0 || isImporting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  Import {csvPreview.length > 0 ? `${csvPreview.length} Data` : ""}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger>

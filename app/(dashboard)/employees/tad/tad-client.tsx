@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Table,
   TableBody,
@@ -17,7 +17,11 @@ import {
   Search,
   MoreHorizontal,
   Trash2,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  FileSpreadsheet,
+  X
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -43,7 +47,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addEmployee, deleteEmployee, EmployeeInput } from "@/app/actions/employee";
+import { addEmployee, deleteEmployee, importEmployeesCSV, EmployeeInput } from "@/app/actions/employee";
+
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+  if (lines.length < 2) return [];
+  const delimiter = lines[0].includes(";") ? ";" : ",";
+  const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/['"]/g, ""));
+  const rows: Record<string, string>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ""));
+    const row: Record<string, string> = {};
+    headers.forEach((h, idx) => { row[h] = values[idx] || ""; });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function mapCSVToTAD(csvRow: Record<string, string>): EmployeeInput {
+  return {
+    nid: csvRow["nid"] || "",
+    name: csvRow["name"] || csvRow["nama"] || "",
+    jenis_kelamin: csvRow["jenis_kelamin"] || csvRow["gender"] || "L",
+    tanggal_lahir: csvRow["tanggal_lahir"] || csvRow["tgl_lahir"] || "",
+    pendidikan: csvRow["pendidikan"] || "",
+    grade: csvRow["grade"] || "",
+    bidang: csvRow["bidang"] || "",
+    sub_bidang: csvRow["sub_bidang"] || "",
+    jabatan: csvRow["jabatan"] || "",
+    jenjang_jabatan: csvRow["jenjang_jabatan"] || "",
+    pog: csvRow["pog"] ? parseInt(csvRow["pog"]) || 0 : 0,
+    masa_kerja: csvRow["masa_kerja"] ? parseInt(csvRow["masa_kerja"]) || 0 : 0,
+    tanggal_pensiun: csvRow["tanggal_pensiun"] || "",
+    status_aktif: csvRow["status_aktif"] || "aktif",
+    status_pegawai: "TAD",
+    perusahaan_asal: csvRow["perusahaan_asal"] || csvRow["vendor"] || "",
+    email: csvRow["email"] || "",
+    phone: csvRow["phone"] || csvRow["whatsapp"] || "",
+    keterangan: csvRow["keterangan"] || "",
+  };
+}
 
 // Daftar vendor PT
 const VENDOR_LIST = [
@@ -57,8 +100,14 @@ const VENDOR_LIST = [
 export function TadClient({ initialData }: { initialData: any[] }) {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [importResult, setImportResult] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [csvPreview, setCsvPreview] = useState<Record<string, string>[]>([]);
+  const [csvFileName, setCsvFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<Partial<EmployeeInput>>({
     nid: "",
@@ -83,8 +132,7 @@ export function TadClient({ initialData }: { initialData: any[] }) {
     const dataToSubmit: EmployeeInput = { 
       ...(formData as any), 
       status_pegawai: "TAD",
-      // Set default nullable fields since TAD has fewer fields
-      jenis_kelamin: "L", // Default 
+      jenis_kelamin: "L",
       status_aktif: "aktif",
     };
 
@@ -96,6 +144,7 @@ export function TadClient({ initialData }: { initialData: any[] }) {
         nid: "", name: "", tanggal_lahir: "",
         perusahaan_asal: "", jabatan: "", bidang: "", email: "", phone: ""
       });
+      window.location.reload();
     } else {
       setErrorMsg(res.error || "Gagal menyimpan data");
     }
@@ -106,7 +155,42 @@ export function TadClient({ initialData }: { initialData: any[] }) {
   const handleDelete = async (nid: string) => {
     if (confirm("Yakin ingin menghapus TAD ini? Semua sertifikasi terkait juga akan terhapus.")) {
       await deleteEmployee(nid);
+      window.location.reload();
     }
+  };
+
+  // CSV Import handlers
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvFileName(file.name);
+    setImportResult(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setCsvPreview(parseCSV(text));
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    if (csvPreview.length === 0) return;
+    setIsImporting(true);
+    setImportResult(null);
+    const data = csvPreview.map(row => mapCSVToTAD(row));
+    const res = await importEmployeesCSV(data);
+    if (res.success) {
+      setImportResult({ message: res.message || `Berhasil import ${res.imported} TAD.`, type: "success" });
+      setTimeout(() => { setIsImportOpen(false); setCsvPreview([]); setCsvFileName(""); window.location.reload(); }, 2000);
+    } else {
+      setImportResult({ message: res.error || "Gagal import data", type: "error" });
+    }
+    setIsImporting(false);
+  };
+
+  const handleCloseImport = () => {
+    setIsImportOpen(false); setCsvPreview([]); setCsvFileName(""); setImportResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const filteredData = initialData.filter(emp => 
@@ -122,10 +206,85 @@ export function TadClient({ initialData }: { initialData: any[] }) {
           <p className="text-slate-500 mt-1">Kelola data informasi pegawai TAD.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all">
-            <Upload className="h-4 w-4" />
-            Import CSV
-          </Button>
+          {/* Import CSV Dialog */}
+          <Dialog open={isImportOpen} onOpenChange={(open) => { if (!open) handleCloseImport(); else setIsImportOpen(true); }}>
+            <DialogTrigger>
+              <Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all">
+                <Upload className="h-4 w-4" />
+                Import CSV
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[700px] bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600 flex items-center gap-2">
+                  <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
+                  Import Data TAD
+                </DialogTitle>
+                <DialogDescription className="text-slate-500">
+                  Upload file CSV dengan kolom: nid, name, perusahaan_asal, jabatan, bidang, tanggal_lahir, email, phone, keterangan
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="flex items-center gap-3">
+                  <input ref={fileInputRef} type="file" accept=".csv,.txt" onChange={handleFileSelect} className="hidden" id="csv-upload-tad" />
+                  <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="border-dashed border-2 border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50 px-6 py-8 w-full flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-emerald-500" />
+                    <span className="text-sm font-medium">{csvFileName || "Klik untuk pilih file CSV"}</span>
+                    {csvFileName && <span className="text-xs text-emerald-600">✓ File terpilih</span>}
+                  </Button>
+                </div>
+                {csvPreview.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-slate-700">Preview: <span className="text-emerald-600 font-bold">{csvPreview.length}</span> baris</p>
+                      <Button variant="ghost" size="sm" onClick={() => { setCsvPreview([]); setCsvFileName(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}><X className="h-4 w-4 mr-1" /> Reset</Button>
+                    </div>
+                    <div className="rounded-md border overflow-x-auto max-h-[250px] overflow-y-auto">
+                      <Table>
+                        <TableHeader className="bg-slate-50 sticky top-0">
+                          <TableRow>
+                            <TableHead className="text-xs">#</TableHead>
+                            <TableHead className="text-xs">NID</TableHead>
+                            <TableHead className="text-xs">Nama</TableHead>
+                            <TableHead className="text-xs">Vendor</TableHead>
+                            <TableHead className="text-xs">Jabatan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {csvPreview.slice(0, 10).map((row, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                              <TableCell className="text-xs font-mono">{row.nid || "-"}</TableCell>
+                              <TableCell className="text-xs font-medium">{row.name || row.nama || "-"}</TableCell>
+                              <TableCell className="text-xs">{row.perusahaan_asal || row.vendor || "-"}</TableCell>
+                              <TableCell className="text-xs">{row.jabatan || "-"}</TableCell>
+                            </TableRow>
+                          ))}
+                          {csvPreview.length > 10 && (
+                            <TableRow><TableCell colSpan={5} className="text-center text-xs text-muted-foreground py-2">... dan {csvPreview.length - 10} baris lainnya</TableCell></TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+                {importResult && (
+                  <div className={`flex items-center gap-2 rounded-lg p-3 text-sm border ${importResult.type === "success" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                    {importResult.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                    {importResult.message}
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleCloseImport}>Batal</Button>
+                <Button onClick={handleImport} disabled={csvPreview.length === 0 || isImporting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  {isImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  Import {csvPreview.length > 0 ? `${csvPreview.length} Data` : ""}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger>
