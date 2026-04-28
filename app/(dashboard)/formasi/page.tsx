@@ -203,7 +203,7 @@ export default function FormasiPage() {
           </div>
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
+            <Select value={filter} onValueChange={(v) => setFilter((v as FilterType) ?? "semua")}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -216,7 +216,7 @@ export default function FormasiPage() {
               </SelectContent>
             </Select>
 
-            <Select value={bidangFilter} onValueChange={setBidangFilter}>
+            <Select value={bidangFilter} onValueChange={(v) => setBidangFilter(v ?? "semua")}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Semua Bidang" />
               </SelectTrigger>
