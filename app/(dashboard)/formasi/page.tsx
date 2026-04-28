@@ -47,6 +47,7 @@ export default function FormasiPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("semua");
+  const [bidangFilter, setBidangFilter] = useState("semua");
 
   useEffect(() => {
     async function loadData() {
@@ -62,6 +63,8 @@ export default function FormasiPage() {
   const handleExport = () => {
     const exportData = data.map((row) => ({
       Nomor: row.nomor,
+      Bidang: row.bidang,
+      "Sub Bidang": row.subBidang,
       "Formasi Jabatan": row.jabatan,
       "Jenjang Jabatan": row.jenjangJabatan,
       "Position Grade": row.positionGrade,
@@ -77,6 +80,8 @@ export default function FormasiPage() {
     // Column widths
     const wscols = [
       { wch: 10 },
+      { wch: 20 },
+      { wch: 25 },
       { wch: 60 },
       { wch: 20 },
       { wch: 15 },
@@ -92,7 +97,11 @@ export default function FormasiPage() {
   const filteredData = data.filter((row) => {
     const matchesSearch =
       row.jabatan.toLowerCase().includes(search.toLowerCase()) ||
-      row.nomor.toLowerCase().includes(search.toLowerCase());
+      row.nomor.toLowerCase().includes(search.toLowerCase()) ||
+      row.bidang.toLowerCase().includes(search.toLowerCase()) ||
+      row.subBidang.toLowerCase().includes(search.toLowerCase());
+
+    const matchesBidang = bidangFilter === "semua" || row.bidang === bidangFilter;
 
     let matchesFilter = true;
     if (filter === "kosong") {
@@ -105,8 +114,10 @@ export default function FormasiPage() {
       matchesFilter = row.bezetting !== null && row.formasiIdeal !== null && row.bezetting > row.formasiIdeal;
     }
 
-    return matchesSearch && matchesFilter;
+    return matchesSearch && matchesFilter && matchesBidang;
   });
+
+  const uniqueBidang = Array.from(new Set(data.map(r => r.bidang))).filter(b => b !== "-");
 
   // Summary stats
   const totalFormasi = data.reduce((acc, r) => acc + Number(r.formasiIdeal ?? 0), 0);
@@ -193,20 +204,32 @@ export default function FormasiPage() {
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <Select value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filter status" />
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="semua">Semua Formasi</SelectItem>
+                <SelectItem value="semua">Semua Status</SelectItem>
                 <SelectItem value="kosong">🔴 Posisi Kosong</SelectItem>
-                <SelectItem value="kurang">🟡 Kekurangan Tenaga</SelectItem>
-                <SelectItem value="sesuai">🟢 Sesuai Formasi</SelectItem>
-                <SelectItem value="lebih">🔵 Kelebihan Tenaga</SelectItem>
+                <SelectItem value="kurang">🟡 Kurang</SelectItem>
+                <SelectItem value="sesuai">🟢 Sesuai</SelectItem>
+                <SelectItem value="lebih">🔵 Lebih</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={bidangFilter} onValueChange={setBidangFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Semua Bidang" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="semua">Semua Bidang</SelectItem>
+                {uniqueBidang.map(b => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-          {filter !== "semua" && (
-            <Button variant="ghost" size="sm" onClick={() => setFilter("semua")} className="text-xs text-muted-foreground hover:text-foreground">
+          {(filter !== "semua" || bidangFilter !== "semua") && (
+            <Button variant="ghost" size="sm" onClick={() => { setFilter("semua"); setBidangFilter("semua"); }} className="text-xs text-muted-foreground hover:text-foreground">
               Reset Filter
             </Button>
           )}
@@ -239,6 +262,8 @@ export default function FormasiPage() {
             <TableHeader className="bg-muted/30">
               <TableRow>
                 <TableHead className="w-[70px] text-center">Nomor</TableHead>
+                <TableHead className="w-[150px]">Bidang</TableHead>
+                <TableHead className="w-[180px]">Sub Bidang</TableHead>
                 <TableHead className="min-w-[300px]">Formasi Jabatan</TableHead>
                 <TableHead className="text-center w-[150px]">Jenjang Jabatan</TableHead>
                 <TableHead className="text-center w-[100px]">Position Grade</TableHead>
@@ -266,6 +291,8 @@ export default function FormasiPage() {
                   return (
                     <TableRow key={row.nomor} className={row.isHeader ? "bg-amber-50/70" : ""}>
                       <TableCell className="text-center font-mono text-sm font-medium">{row.nomor}</TableCell>
+                      <TableCell className="text-xs font-semibold text-slate-600">{row.bidang}</TableCell>
+                      <TableCell className="text-xs text-slate-500">{row.subBidang}</TableCell>
                       <TableCell className={row.isHeader ? "font-semibold" : ""}>
                         {roleTitle ? (
                           <>
