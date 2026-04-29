@@ -289,8 +289,24 @@ export default function FormasiPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((row) => {
-                  const diffIdeal = (row.bezetting !== null && row.formasiIdeal !== null) ? row.bezetting - row.formasiIdeal : null;
+                filteredData.map((row, index) => {
+                  // Calculate rowSpan for "Ideal" and "Selisih" columns
+                  // Only the first row of a group (where formasiIdeal !== null) gets the rowSpan
+                  let rowSpan = 1;
+                  let groupBezetting = Number(row.bezetting ?? 0);
+                  
+                  if (row.formasiIdeal !== null) {
+                    for (let i = index + 1; i < filteredData.length; i++) {
+                      if (filteredData[i].formasiIdeal === null) {
+                        rowSpan++;
+                        groupBezetting += Number(filteredData[i].bezetting ?? 0);
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+
+                  const diffIdeal = (row.formasiIdeal !== null) ? groupBezetting - row.formasiIdeal : null;
 
                   // Parse jabatan for bold role title
                   const jabatanParts = row.jabatan.split("  ");
@@ -310,13 +326,35 @@ export default function FormasiPage() {
                       </TableCell>
                       <TableCell className="text-center text-xs">{row.jenjangJabatan}</TableCell>
                       <TableCell className="text-center font-mono text-sm">{row.positionGrade}</TableCell>
-                      <TableCell className="text-center">{row.formasiIdeal ?? ""}</TableCell>
-                      <TableCell className={`text-center ${getBezettingColor(row.bezetting, row.formasiIdeal)}`}>
-                        {row.bezetting ?? ""}
+                      
+                      {/* FTK Ideal (Merged) */}
+                      {row.formasiIdeal !== null ? (
+                        <TableCell 
+                          rowSpan={rowSpan} 
+                          className="text-center font-bold bg-slate-50/50 border-x"
+                        >
+                          {row.formasiIdeal}
+                        </TableCell>
+                      ) : null}
+
+                      {/* Bezetting Kary (Not Merged) */}
+                      <TableCell className={`text-center font-semibold ${row.bezetting === 0 ? "text-red-600 bg-red-50/30" : "text-slate-700"}`}>
+                        {row.bezetting ?? 0}
                       </TableCell>
-                      <TableCell className={`text-center ${getDiffColor(diffIdeal)}`}>
-                        {diffIdeal !== null ? diffIdeal : ""}
-                      </TableCell>
+
+                      {/* Selisih (Merged) */}
+                      {row.formasiIdeal !== null ? (
+                        <TableCell 
+                          rowSpan={rowSpan} 
+                          className={`text-center font-bold border-x ${
+                            diffIdeal === 0 ? "bg-orange-50 text-orange-700" : 
+                            diffIdeal !== null && diffIdeal < 0 ? "bg-blue-50 text-blue-700" : 
+                            diffIdeal !== null && diffIdeal > 0 ? "bg-emerald-50 text-emerald-700" : ""
+                          }`}
+                        >
+                          {diffIdeal !== null ? (diffIdeal > 0 ? `+${diffIdeal}` : diffIdeal) : "-"}
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   );
                 })
