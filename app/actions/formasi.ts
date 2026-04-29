@@ -32,7 +32,7 @@ export async function getFormasiWithActual() {
       const level = parts[0].trim().toUpperCase();
       const title = parts.length > 1 ? parts[1].trim().toUpperCase() : "";
       
-      // Normalization function for flexible matching
+      // Normalization functions
       const normalize = (str: string) => {
         return str
           .toUpperCase()
@@ -41,12 +41,28 @@ export async function getFormasiWithActual() {
           .replace(/\bTECHNICIAN\b/g, "TEKNISI")
           .replace(/\bOFFICER\b/g, "OFR")
           .replace(/\bDAN\b/g, "&")
+          .replace(/\bI\b/g, "1")
+          .replace(/\bII\b/g, "2")
+          .replace(/\bIII\b/g, "3")
           .replace(/\s+/g, " ")
           .trim();
       };
 
+      const getKeywords = (str: string) => {
+        return str
+          .toUpperCase()
+          .replace(/\b(PEMELIHARAAN|HAR|PLTGU|&|DAN|BLOK|UNIT)\b/g, " ")
+          .replace(/\bI\b/g, "1")
+          .replace(/\bII\b/g, "2")
+          .replace(/\bIII\b/g, "3")
+          .replace(/\s+/g, " ")
+          .trim()
+          .split(" ")
+          .filter(k => k.length > 0);
+      };
+
       const normalizedLevel = normalize(level);
-      const normalizedBaseTitle = normalize(title.split(" (")[0].split(" / ")[0]);
+      const significantKeywords = getKeywords(title.split(" (")[0]);
       
       let totalCount = 0;
       
@@ -55,19 +71,22 @@ export async function getFormasiWithActual() {
           const empJabatan = item.jabatan.trim().toUpperCase();
           const normalizedEmpJabatan = normalize(empJabatan);
           
-          // Matching Logic:
-          // 1. Level match (with SENIOR check to avoid Technician matching Senior Technician)
+          // 1. Level Match
           const hasSenior = normalizedEmpJabatan.includes("SENIOR");
           const wantsSenior = normalizedLevel.includes("SENIOR");
           const levelMatch = normalizedEmpJabatan.includes(normalizedLevel) && (wantsSenior || !hasSenior);
           
+          // 2. Title Match (Keywords)
           let titleMatch = title === "";
           if (!titleMatch) {
-            // Escape special characters for regex
-            const escapedBase = normalizedBaseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            // Match the normalized base title as a distinct unit
-            const regex = new RegExp(`${escapedBase}(\\s|\\(|$)`, 'i');
-            titleMatch = regex.test(normalizedEmpJabatan);
+            titleMatch = significantKeywords.every(kw => {
+              // Strict check for numbers to avoid 1 matching 11 or 21
+              if (/^\d+$/.test(kw)) {
+                const numRegex = new RegExp(`(^|\\s|UNIT|BLOK)${kw}(\\s|\\(|$)`, 'i');
+                return numRegex.test(normalizedEmpJabatan);
+              }
+              return normalizedEmpJabatan.includes(kw);
+            });
           }
           
           if (levelMatch && titleMatch) {
