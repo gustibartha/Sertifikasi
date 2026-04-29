@@ -61,17 +61,24 @@ export default function FormasiPage() {
   }, []);
 
   const handleExport = () => {
-    const exportData = data.map((row) => ({
-      Nomor: row.nomor,
-      Bidang: row.bidang,
-      "Sub Bidang": row.subBidang,
-      "Formasi Jabatan": row.jabatan,
-      "Jenjang Jabatan": row.jenjangJabatan,
-      "Position Grade": row.positionGrade,
-      "FTK Ideal": row.formasiIdeal ?? 0,
-      "Bezetting Kary.": row.bezetting ?? 0,
-      "Selisih (Vs Ideal)": (row.bezetting !== null && row.formasiIdeal !== null) ? row.bezetting - row.formasiIdeal : 0,
-    }));
+    const exportData = data.map((row) => {
+      const parts = row.jabatan.split("  ");
+      const level = parts.length > 1 ? parts[0] : "";
+      const name = parts.length > 1 ? parts.slice(1).join("  ") : row.jabatan;
+
+      return {
+        Nomor: row.nomor,
+        Bidang: row.bidang,
+        "Sub Bidang": row.subBidang,
+        "Level Jabatan": level,
+        "Nama Jabatan": name,
+        "Jenjang Jabatan": row.jenjangJabatan,
+        "Position Grade": row.positionGrade,
+        "FTK Ideal": row.formasiIdeal ?? 0,
+        "Bezetting Kary.": row.bezetting ?? 0,
+        "Selisih (Vs Ideal)": (row.bezetting !== null && row.formasiIdeal !== null) ? row.bezetting - row.formasiIdeal : 0,
+      };
+    });
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
@@ -79,15 +86,16 @@ export default function FormasiPage() {
     
     // Column widths
     const wscols = [
-      { wch: 10 },
-      { wch: 20 },
-      { wch: 25 },
-      { wch: 60 },
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 15 },
-      { wch: 15 },
+      { wch: 10 }, // Nomor
+      { wch: 20 }, // Bidang
+      { wch: 25 }, // Sub Bidang
+      { wch: 25 }, // Level
+      { wch: 45 }, // Jabatan
+      { wch: 20 }, // Jenjang
+      { wch: 15 }, // Grade
+      { wch: 12 }, // Ideal
+      { wch: 15 }, // Bezetting
+      { wch: 15 }, // Selisih
     ];
     worksheet["!cols"] = wscols;
 
@@ -262,9 +270,10 @@ export default function FormasiPage() {
             <TableHeader className="bg-muted/30">
               <TableRow>
                 <TableHead className="w-[70px] text-center">Nomor</TableHead>
-                <TableHead className="w-[150px]">Bidang</TableHead>
-                <TableHead className="w-[180px]">Sub Bidang</TableHead>
-                <TableHead className="min-w-[300px]">Formasi Jabatan</TableHead>
+                <TableHead className="w-[140px]">Bidang</TableHead>
+                <TableHead className="w-[160px]">Sub Bidang</TableHead>
+                <TableHead className="w-[180px]">Level</TableHead>
+                <TableHead className="min-w-[250px]">Jabatan</TableHead>
                 <TableHead className="text-center w-[150px]">Jenjang Jabatan</TableHead>
                 <TableHead className="text-center w-[100px]">Position Grade</TableHead>
                 <TableHead className="text-center w-[100px]">FTK Ideal</TableHead>
@@ -293,15 +302,11 @@ export default function FormasiPage() {
                       <TableCell className="text-center font-mono text-sm font-medium">{row.nomor}</TableCell>
                       <TableCell className="text-xs font-semibold text-slate-600">{row.bidang}</TableCell>
                       <TableCell className="text-xs text-slate-500">{row.subBidang}</TableCell>
+                      <TableCell className="text-sm font-bold italic text-slate-700">
+                        {roleTitle || "-"}
+                      </TableCell>
                       <TableCell className={row.isHeader ? "font-semibold" : ""}>
-                        {roleTitle ? (
-                          <>
-                            <span className="font-bold italic">{roleTitle}</span>
-                            {"  "}{roleName}
-                          </>
-                        ) : (
-                          roleName
-                        )}
+                        {roleName}
                       </TableCell>
                       <TableCell className="text-center text-xs">{row.jenjangJabatan}</TableCell>
                       <TableCell className="text-center font-mono text-sm">{row.positionGrade}</TableCell>
