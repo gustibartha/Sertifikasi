@@ -54,7 +54,7 @@ export async function getFormasiWithActual() {
 
       const getKeywords = (str: string) => {
         return normalize(str)
-          .replace(/\b(HAR|PLTGU|PLTU|&|BLOK|UNIT|ASMAN|TEKNISI|OFR|JR|SR)\b/g, " ")
+          .replace(/\b(HAR|PLTGU|PLTU|BLOK|UNIT|ASMAN|TEKNISI|OFR|JR|SR)\b/g, " ")
           .replace(/\s+/g, " ")
           .trim()
           .split(" ")
@@ -86,8 +86,6 @@ export async function getFormasiWithActual() {
           // 2. Title Match (Keywords)
           let titleMatch = title === "";
           if (!titleMatch) {
-            const isCombined = title.includes("&") || title.includes("/") || title.includes(",");
-            
             const matchKeyword = (kw: string) => {
               // Strict check for numbers to avoid 1 matching 11
               if (/^\d+$/.test(kw)) {
@@ -97,13 +95,8 @@ export async function getFormasiWithActual() {
               return normalizedEmpJabatan.includes(kw);
             };
 
-            if (isCombined) {
-              // For combined roles, any keyword match is sufficient (e.g. "UMUM" matches "UMUM & CSR")
-              titleMatch = significantKeywords.some(matchKeyword);
-            } else {
-              // For standard roles, all keywords must match
-              titleMatch = significantKeywords.every(matchKeyword);
-            }
+            // Strict match: all significant keywords must be present
+            titleMatch = significantKeywords.every(matchKeyword);
           }
           
           if (levelMatch && titleMatch) {
