@@ -43,9 +43,17 @@ export async function getFormasiWithActual() {
           
           // Matching Logic:
           // 1. Employee title starts with the level (e.g. "TECHNICIAN" matches "TECHNICIAN..." but not "SENIOR TECHNICIAN...")
-          // 2. Employee title contains the base title description
+          // 2. Employee title contains the base title description as a distinct unit (to avoid BLOK I matching BLOK II)
           const levelMatch = empJabatan.startsWith(level);
-          const titleMatch = title === "" || empJabatan.includes(baseTitle);
+          
+          let titleMatch = title === "";
+          if (!titleMatch) {
+            // Escape special characters for regex
+            const escapedBase = baseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // Match the base title followed by space, bracket, or end of string
+            const regex = new RegExp(`${escapedBase}(\\s|\\(|$)`, 'i');
+            titleMatch = regex.test(empJabatan);
+          }
           
           if (levelMatch && titleMatch) {
             totalCount += Number(item.count);
