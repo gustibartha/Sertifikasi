@@ -27,18 +27,35 @@ export async function getFormasiWithActual() {
 
     // Map the static formasi data with dynamic bezetting
     const updatedData: FormasiRow[] = formasiData.map(row => {
-      // Try to find a match in the counts map
-      // We normalize whitespace and case for better matching
-      const key = row.jabatan.replace(/\s+/g, ' ').trim().toLowerCase();
+      // Split by double space to separate Level and Title (e.g., "TECHNICIAN  PRODUKSI...")
+      const parts = row.jabatan.split("  ");
+      const level = parts[0].trim().toUpperCase();
+      const title = parts.length > 1 ? parts[1].trim().toUpperCase() : "";
       
-      // Also try matching the parts if the jabatan has double spaces
-      const normalizedJabatan = row.jabatan.replace(/\s\s+/g, ' ').trim().toLowerCase();
+      // Remove group indicators like "(A,B,C,D)" or "/ JUNIOR" for broader matching
+      const baseTitle = title.split(" (")[0].split(" / ")[0].trim();
       
-      const count = countsMap.get(key) || countsMap.get(normalizedJabatan) || 0;
+      let totalCount = 0;
+      
+      actualCounts.forEach(item => {
+        if (item.jabatan) {
+          const empJabatan = item.jabatan.trim().toUpperCase();
+          
+          // Matching Logic:
+          // 1. Employee title starts with the level (e.g. "TECHNICIAN" matches "TECHNICIAN..." but not "SENIOR TECHNICIAN...")
+          // 2. Employee title contains the base title description
+          const levelMatch = empJabatan.startsWith(level);
+          const titleMatch = title === "" || empJabatan.includes(baseTitle);
+          
+          if (levelMatch && titleMatch) {
+            totalCount += Number(item.count);
+          }
+        }
+      });
       
       return {
         ...row,
-        bezetting: count
+        bezetting: totalCount
       };
     });
 
