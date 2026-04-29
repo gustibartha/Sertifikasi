@@ -38,9 +38,13 @@ export async function getFormasiWithActual() {
           .toUpperCase()
           .replace(/\bPEMELIHARAAN\b/g, "HAR")
           .replace(/\bASSISTANT MANAGER\b/g, "ASMAN")
+          .replace(/\bASISTEN MANAJER\b/g, "ASMAN")
           .replace(/\bTECHNICIAN\b/g, "TEKNISI")
           .replace(/\bOFFICER\b/g, "OFR")
+          .replace(/\bJUNIOR\b/g, "JR")
+          .replace(/\bSENIOR\b/g, "SR")
           .replace(/\bDAN\b/g, "&")
+          .replace(/\//g, " & ")
           .replace(/\bI\b/g, "1")
           .replace(/\bII\b/g, "2")
           .replace(/\bIII\b/g, "3")
@@ -49,12 +53,8 @@ export async function getFormasiWithActual() {
       };
 
       const getKeywords = (str: string) => {
-        return str
-          .toUpperCase()
-          .replace(/\b(PEMELIHARAAN|HAR|PLTGU|&|DAN|BLOK|UNIT)\b/g, " ")
-          .replace(/\bI\b/g, "1")
-          .replace(/\bII\b/g, "2")
-          .replace(/\bIII\b/g, "3")
+        return normalize(str)
+          .replace(/\b(HAR|PLTGU|PLTU|&|BLOK|UNIT|ASMAN|TEKNISI|OFR|JR|SR)\b/g, " ")
           .replace(/\s+/g, " ")
           .trim()
           .split(" ")
@@ -71,16 +71,23 @@ export async function getFormasiWithActual() {
           const empJabatan = item.jabatan.trim().toUpperCase();
           const normalizedEmpJabatan = normalize(empJabatan);
           
-          // 1. Level Match
-          const hasSenior = normalizedEmpJabatan.includes("SENIOR");
-          const wantsSenior = normalizedLevel.includes("SENIOR");
-          const levelMatch = normalizedEmpJabatan.includes(normalizedLevel) && (wantsSenior || !hasSenior);
+          // 1. Level Match (Strictly separate JR, SR, and Regular)
+          const isJR = normalizedEmpJabatan.includes("JR");
+          const isSR = normalizedEmpJabatan.includes("SR");
+          const wantsJR = normalizedLevel.includes("JR");
+          const wantsSR = normalizedLevel.includes("SR");
+          
+          // Must contain the base level (e.g. OFR) and match seniority exactly
+          const baseLevelMatch = normalizedEmpJabatan.includes(normalizedLevel.replace(/\b(JR|SR)\b/g, "").trim());
+          const seniorityMatch = (wantsJR === isJR) && (wantsSR === isSR);
+          
+          const levelMatch = baseLevelMatch && seniorityMatch;
           
           // 2. Title Match (Keywords)
           let titleMatch = title === "";
           if (!titleMatch) {
             titleMatch = significantKeywords.every(kw => {
-              // Strict check for numbers to avoid 1 matching 11 or 21
+              // Strict check for numbers to avoid 1 matching 11
               if (/^\d+$/.test(kw)) {
                 const numRegex = new RegExp(`(^|\\s|UNIT|BLOK)${kw}(\\s|\\(|$)`, 'i');
                 return numRegex.test(normalizedEmpJabatan);
