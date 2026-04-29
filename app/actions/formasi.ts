@@ -35,14 +35,18 @@ export async function getFormasiWithActual() {
       // Normalization function for flexible matching
       const normalize = (str: string) => {
         return str
+          .toUpperCase()
           .replace(/\bPEMELIHARAAN\b/g, "HAR")
+          .replace(/\bASSISTANT MANAGER\b/g, "ASMAN")
+          .replace(/\bTECHNICIAN\b/g, "TEKNISI")
+          .replace(/\bOFFICER\b/g, "OFR")
           .replace(/\bDAN\b/g, "&")
           .replace(/\s+/g, " ")
           .trim();
       };
 
-      // Remove group indicators like "(A,B,C,D)" or "/ JUNIOR" for broader matching
-      const baseTitle = normalize(title.split(" (")[0].split(" / ")[0]);
+      const normalizedLevel = normalize(level);
+      const normalizedBaseTitle = normalize(title.split(" (")[0].split(" / ")[0]);
       
       let totalCount = 0;
       
@@ -52,13 +56,15 @@ export async function getFormasiWithActual() {
           const normalizedEmpJabatan = normalize(empJabatan);
           
           // Matching Logic:
-          // 1. Employee title starts with the level
-          const levelMatch = empJabatan.startsWith(level);
+          // 1. Level match (with SENIOR check to avoid Technician matching Senior Technician)
+          const hasSenior = normalizedEmpJabatan.includes("SENIOR");
+          const wantsSenior = normalizedLevel.includes("SENIOR");
+          const levelMatch = normalizedEmpJabatan.includes(normalizedLevel) && (wantsSenior || !hasSenior);
           
           let titleMatch = title === "";
           if (!titleMatch) {
             // Escape special characters for regex
-            const escapedBase = baseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escapedBase = normalizedBaseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             // Match the normalized base title as a distinct unit
             const regex = new RegExp(`${escapedBase}(\\s|\\(|$)`, 'i');
             titleMatch = regex.test(normalizedEmpJabatan);
