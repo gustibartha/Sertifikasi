@@ -12,21 +12,21 @@ export interface FormasiRow {
 
 export const formasiData: FormasiRow[] = [
   // === BIDANG 1: Senior Manager Unit Pembangkitan Muara Karang ===
-  { nomor: "1", bidang: "SM UP Muara Karang", subBidang: "-", jabatan: "SENIOR MANAGER  UNIT PEMBANGKITAN MUARA KARANG", jenjangJabatan: "Manajemen Menengah", positionGrade: "20", formasiIdeal: 1, bezetting: 1, isHeader: true },
-  { nomor: "1.1", bidang: "SM UP Muara Karang", subBidang: "Kinerja", jabatan: "SPECIALIST  KINERJA OPERASI", jenjangJabatan: "Specialist", positionGrade: "15", formasiIdeal: 1, bezetting: 1, isHeader: false },
-  { nomor: "1.2", bidang: "SM UP Muara Karang", subBidang: "Kinerja", jabatan: "SPECIALIST  KINERJA PEMELIHARAAN", jenjangJabatan: "Specialist", positionGrade: "15", formasiIdeal: 1, bezetting: 1, isHeader: false },
-  { nomor: "1.3", bidang: "SM UP Muara Karang", subBidang: "Kinerja", jabatan: "SPECIALIST  KINERJA ENJINIRING & QUALITY ASSURANCE", jenjangJabatan: "Specialist", positionGrade: "15", formasiIdeal: 1, bezetting: 1, isHeader: false },
+  { nomor: "1", bidang: "SM UP Muara Karang", subBidang: "-", jabatan: "SENIOR MANAGER  UNIT PEMBANGKITAN", jenjangJabatan: "Manajemen Menengah", positionGrade: "20", formasiIdeal: 1, bezetting: 0, isHeader: true },
+  { nomor: "1.1", bidang: "SM UP Muara Karang", subBidang: "Kinerja", jabatan: "SPECIALIST  KINERJA OPERASI", jenjangJabatan: "Specialist", positionGrade: "15", formasiIdeal: 1, bezetting: 0, isHeader: false },
+  { nomor: "1.2", bidang: "SM UP Muara Karang", subBidang: "Kinerja", jabatan: "SPECIALIST  KINERJA PEMELIHARAAN", jenjangJabatan: "Specialist", positionGrade: "15", formasiIdeal: 1, bezetting: 0, isHeader: false },
+  { nomor: "1.3", bidang: "SM UP Muara Karang", subBidang: "Kinerja", jabatan: "SPECIALIST  KINERJA ENJINIRING & QA", jenjangJabatan: "Specialist", positionGrade: "15", formasiIdeal: 1, bezetting: 0, isHeader: false },
   // K3 & Keamanan
-  { nomor: "1.4", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "ASSISTANT MANAGER  K3 & KEAMANAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 1, bezetting: 1, isHeader: true },
-  { nomor: "1.4.1", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "SENIOR OFFICER  KINERJA K3 & KEAMANAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 0, bezetting: 1, isHeader: false },
-  { nomor: "1.4.2", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "OFFICER  K3", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 4, bezetting: 3, isHeader: false },
+  { nomor: "1.4", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "ASSISTANT MANAGER  K3 & KEAMANAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 1, bezetting: 0, isHeader: true },
+  { nomor: "1.4.1", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "SENIOR OFFICER  K3 & KEAMANAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 0, bezetting: 0, isHeader: false },
+  { nomor: "1.4.2", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "OFFICER  K3", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 4, bezetting: 0, isHeader: false },
   { nomor: "1.4.3", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "JUNIOR OFFICER  K3", jenjangJabatan: "Generalist 1-2", positionGrade: "9/10", formasiIdeal: null, bezetting: 0, isHeader: false },
-  { nomor: "1.4.4", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "OFFICER  KEAMANAN", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 1, bezetting: 1, isHeader: false },
+  { nomor: "1.4.4", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "OFFICER  KEAMANAN", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 1, bezetting: 0, isHeader: false },
   { nomor: "1.4.5", bidang: "SM UP Muara Karang", subBidang: "K3 & Keamanan", jabatan: "JUNIOR OFFICER  KEAMANAN", jenjangJabatan: "Generalist 1-2", positionGrade: "9/10", formasiIdeal: null, bezetting: 0, isHeader: false },
   // Lingkungan
-  { nomor: "1.5", bidang: "SM UP Muara Karang", subBidang: "Lingkungan", jabatan: "ASSISTANT MANAGER  LINGKUNGAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 1, bezetting: 1, isHeader: true },
-  { nomor: "1.5.1", bidang: "SM UP Muara Karang", subBidang: "Lingkungan", jabatan: "SENIOR OFFICER  KINERJA LINGKUNGAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 0, bezetting: 0, isHeader: false },
-  { nomor: "1.5.2", bidang: "SM UP Muara Karang", subBidang: "Lingkungan", jabatan: "OFFICER  LINGKUNGAN", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 4, bezetting: 4, isHeader: false },
+  { nomor: "1.5", bidang: "SM UP Muara Karang", subBidang: "Lingkungan", jabatan: "ASSISTANT MANAGER  LINGKUNGAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 1, bezetting: 0, isHeader: true },
+  { nomor: "1.5.1", bidang: "SM UP Muara Karang", subBidang: "Lingkungan", jabatan: "SENIOR OFFICER  LINGKUNGAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 0, bezetting: 0, isHeader: false },
+  { nomor: "1.5.2", bidang: "SM UP Muara Karang", subBidang: "Lingkungan", jabatan: "OFFICER  LINGKUNGAN", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 4, bezetting: 0, isHeader: false },
   { nomor: "1.5.3", bidang: "SM UP Muara Karang", subBidang: "Lingkungan", jabatan: "JUNIOR OFFICER  LINGKUNGAN", jenjangJabatan: "Generalist 1-2", positionGrade: "9/10", formasiIdeal: null, bezetting: 0, isHeader: false },
 
   // === BIDANG 2: Manager Operasi ===

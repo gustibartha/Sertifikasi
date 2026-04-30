@@ -87,6 +87,8 @@ export async function getFormasiWithActual() {
           // 2. Title Match (Keywords)
           let titleMatch = title === "";
           if (!titleMatch && levelMatch) {
+            const normalizedTitlePart = normalize(title);
+            
             const matchKeyword = (kw: string) => {
               // Exact word match using regex boundaries
               const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -94,8 +96,13 @@ export async function getFormasiWithActual() {
               return regex.test(normalizedEmpJabatan);
             };
 
-            // All significant keywords must match exactly as words
+            // Stage 1: All significant keywords must match exactly as words
             titleMatch = significantKeywords.every(matchKeyword);
+
+            // Stage 2: Fallback to simple string inclusion (handles cases where DB has extra words)
+            if (!titleMatch) {
+              titleMatch = normalizedEmpJabatan.includes(normalizedTitlePart);
+            }
           }
           
           if (levelMatch && titleMatch) {
