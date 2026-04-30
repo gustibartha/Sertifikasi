@@ -43,8 +43,12 @@ export async function getFormasiWithActual() {
           .replace(/\bOFFICER\b/g, "OFR")
           .replace(/\bJUNIOR\b/g, "JR")
           .replace(/\bSENIOR\b/g, "SR")
+          .replace(/\bLAB\b/g, "LABORATORIUM")
+          .replace(/\bENJINIRING\b/g, "ENG")
+          .replace(/\bENGINEERING\b/g, "ENG")
           .replace(/\bDAN\b/g, "&")
           .replace(/\//g, " & ")
+          .replace(/&/g, " & ")
           .replace(/\bI\b/g, "1")
           .replace(/\bII\b/g, "2")
           .replace(/\bIII\b/g, "3")
@@ -54,7 +58,7 @@ export async function getFormasiWithActual() {
 
       const getKeywords = (str: string) => {
         return normalize(str)
-          .replace(/\b(HAR|PLTGU|PLTU|BLOK|UNIT|ASMAN|TEKNISI|OFR|JR|SR)\b/g, " ")
+          .replace(/\b(HAR|PLTGU|PLTU|BLOK|UNIT|ASMAN|TEKNISI|OFR|JR|SR|ENG)\b/g, " ")
           .replace(/\s+/g, " ")
           .trim()
           .split(" ")
@@ -78,16 +82,16 @@ export async function getFormasiWithActual() {
           const wantsSR = normalizedLevel.includes("SR");
           
           // Must contain the base level (e.g. OFR) and match seniority exactly
-          const baseLevelMatch = normalizedEmpJabatan.includes(normalizedLevel.replace(/\b(JR|SR)\b/g, "").trim());
+          const baseLevel = normalizedLevel.replace(/\b(JR|SR)\b/g, "").trim();
+          const baseLevelMatch = normalizedEmpJabatan.includes(baseLevel);
           const seniorityMatch = (wantsJR === isJR) && (wantsSR === isSR);
           
-          const levelMatch = baseLevelMatch && seniorityMatch;
+          let levelMatch = baseLevelMatch && seniorityMatch;
           
           // 2. Title Match (Keywords)
           let titleMatch = title === "";
-          if (!titleMatch) {
+          if (!titleMatch && levelMatch) {
             const matchKeyword = (kw: string) => {
-              // Strict check for numbers to avoid 1 matching 11
               if (/^\d+$/.test(kw)) {
                 const numRegex = new RegExp(`(^|\\s|UNIT|BLOK)${kw}(\\s|\\(|$)`, 'i');
                 return numRegex.test(normalizedEmpJabatan);
@@ -95,8 +99,18 @@ export async function getFormasiWithActual() {
               return normalizedEmpJabatan.includes(kw);
             };
 
-            // Strict match: all significant keywords must be present
-            titleMatch = significantKeywords.every(matchKeyword);
+            // Requirement: All "Core" keywords (length > 2) must match
+            const coreKeywords = significantKeywords.filter(k => k.length > 2);
+            if (coreKeywords.length > 0) {
+              titleMatch = coreKeywords.every(matchKeyword);
+            } else {
+              titleMatch = significantKeywords.every(matchKeyword);
+            }
+
+            // Relaxed fallback for Managers/Asmans/Specialists if core match fails
+            if (!titleMatch && (level.includes("MANAGER") || level.includes("SPECIALIST"))) {
+              titleMatch = significantKeywords.some(matchKeyword);
+            }
           }
           
           if (levelMatch && titleMatch) {
