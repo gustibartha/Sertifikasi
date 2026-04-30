@@ -43,6 +43,7 @@ export async function getFormasiWithActual() {
           .replace(/\bOFFICER\b/g, "OFR")
           .replace(/\bJUNIOR\b/g, "JR")
           .replace(/\bSENIOR\b/g, "SR")
+          .replace(/\bCBM\b/g, "CONDITION BASED MAINTENANCE")
           .replace(/\bDAN\b/g, "&")
           .replace(/\//g, " & ")
           .replace(/&/g, " & ")
@@ -90,18 +91,29 @@ export async function getFormasiWithActual() {
             const normalizedTitlePart = normalize(title);
             
             const matchKeyword = (kw: string) => {
-              // Exact word match using regex boundaries
+              // Exact word match using regex boundaries for alphanumeric
               const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const regex = new RegExp(`(^|\\s|&|/|\\()${escaped}(\\s|\\)|&|/|$)`, 'i');
+              const isSymbol = /^[^\w\s]+$/.test(kw);
+              const regex = isSymbol 
+                ? new RegExp(`${escaped}`, 'i') // Symbols don't need boundaries
+                : new RegExp(`(^|\\s|&|/|\\()${escaped}(\\s|\\)|&|/|$)`, 'i');
               return regex.test(normalizedEmpJabatan);
             };
 
             // Stage 1: All significant keywords must match exactly as words
             titleMatch = significantKeywords.every(matchKeyword);
 
-            // Stage 2: Fallback to simple string inclusion (handles cases where DB has extra words)
+            // Stage 2: Fallback to simple string inclusion
             if (!titleMatch) {
               titleMatch = normalizedEmpJabatan.includes(normalizedTitlePart);
+            }
+
+            // Stage 3: Relaxed Match (If at least 70% of significant keywords match)
+            if (!titleMatch && significantKeywords.length > 1) {
+              const matchCount = significantKeywords.filter(matchKeyword).length;
+              if (matchCount / significantKeywords.length >= 0.7) {
+                titleMatch = true;
+              }
             }
           }
           
