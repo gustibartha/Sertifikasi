@@ -152,7 +152,7 @@ export const formasiData: FormasiRow[] = [
 
   // === BIDANG 5: Manager Business Support ===
   { nomor: "5", bidang: "Business Support", subBidang: "-", jabatan: "MANAGER  BUSINESS SUPPORT", jenjangJabatan: "Manajemen Dasar", positionGrade: "15", formasiIdeal: 1, bezetting: 1, isHeader: true },
-  { nomor: "5.1", bidang: "Business Support", subBidang: "Kinerja", jabatan: "SENIOR OFFICER  KINERJA SDM, UMUM & CSR", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 0, bezetting: 3, isHeader: false },
+  { nomor: "5.1", bidang: "Business Support", subBidang: "Kinerja", jabatan: "SENIOR OFFICER  KINERJA SDM, UMUM, HUMAS & CSR", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 0, bezetting: 3, isHeader: false },
   { nomor: "5.2", bidang: "Business Support", subBidang: "Kinerja", jabatan: "SENIOR OFFICER  KINERJA PENGADAAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 0, bezetting: 1, isHeader: false },
   { nomor: "5.3", bidang: "Business Support", subBidang: "Kinerja", jabatan: "SENIOR OFFICER  KINERJA KEUANGAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 0, bezetting: 1, isHeader: false },
   // Pengadaan
@@ -160,11 +160,13 @@ export const formasiData: FormasiRow[] = [
   { nomor: "5.4.1", bidang: "Business Support", subBidang: "Pengadaan", jabatan: "OFFICER  PENGADAAN", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 6, bezetting: 5, isHeader: false },
   { nomor: "5.4.2", bidang: "Business Support", subBidang: "Pengadaan", jabatan: "JUNIOR OFFICER  PENGADAAN", jenjangJabatan: "Generalist 1-2", positionGrade: "8/9/10", formasiIdeal: null, bezetting: 0, isHeader: false },
   // SDM, Umum & CSR
-  { nomor: "5.5", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "ASSISTANT MANAGER  SDM, UMUM & CSR", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 1, bezetting: 1, isHeader: true },
+  { nomor: "5.5", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "ASSISTANT MANAGER  SDM, UMUM, HUMAS & CSR", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 1, bezetting: 1, isHeader: true },
   { nomor: "5.5.1", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "OFFICER  SDM", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 2, bezetting: 2, isHeader: false },
   { nomor: "5.5.2", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "JUNIOR OFFICER  SDM", jenjangJabatan: "Generalist 1-2", positionGrade: "8/9/10", formasiIdeal: null, bezetting: 0, isHeader: false },
-  { nomor: "5.5.3", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "OFFICER  UMUM & CSR", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 4, bezetting: 4, isHeader: false },
-  { nomor: "5.5.4", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "JUNIOR OFFICER  UMUM & CSR", jenjangJabatan: "Generalist 1-2", positionGrade: "8/9/10", formasiIdeal: null, bezetting: 0, isHeader: false },
+  { nomor: "5.5.3", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "OFFICER  UMUM", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 3, bezetting: 3, isHeader: false },
+  { nomor: "5.5.4", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "JUNIOR OFFICER  UMUM", jenjangJabatan: "Generalist 1-2", positionGrade: "8/9/10", formasiIdeal: null, bezetting: 0, isHeader: false },
+  { nomor: "5.5.5", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "OFFICER  HUMAS & CSR", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 1, bezetting: 1, isHeader: false },
+  { nomor: "5.5.6", bidang: "Business Support", subBidang: "SDM & Umum", jabatan: "JUNIOR OFFICER  HUMAS & CSR", jenjangJabatan: "Generalist 1-2", positionGrade: "8/9/10", formasiIdeal: null, bezetting: 0, isHeader: false },
   // Keuangan
   { nomor: "5.6", bidang: "Business Support", subBidang: "Keuangan", jabatan: "ASSISTANT MANAGER  KEUANGAN", jenjangJabatan: "Generalist 3", positionGrade: "13", formasiIdeal: 1, bezetting: 0, isHeader: true },
   { nomor: "5.6.1", bidang: "Business Support", subBidang: "Keuangan", jabatan: "OFFICER  KEUANGAN & ANGGARAN", jenjangJabatan: "Generalist 1-2", positionGrade: "11/12", formasiIdeal: 2, bezetting: 2, isHeader: false },
