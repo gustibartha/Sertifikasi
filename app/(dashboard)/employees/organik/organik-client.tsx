@@ -55,7 +55,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import * as XLSX from "xlsx";
-import { addEmployee, deleteEmployee, importEmployeesCSV, EmployeeInput } from "@/app/actions/employee";
+import { addEmployee, updateEmployee, deleteEmployee, importEmployeesCSV, EmployeeInput } from "@/app/actions/employee";
 import { normalizePendidikan } from "@/lib/utils";
 
 // Helper to convert Excel Serial Date to YYYY-MM-DD
@@ -121,6 +121,10 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
   const [filterGender, setFilterGender] = useState("all");
   const [filterPendidikan, setFilterPendidikan] = useState("all");
   const [isOpen, setIsOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editErrorMsg, setEditErrorMsg] = useState("");
+  const [editData, setEditData] = useState<EmployeeInput | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -202,6 +206,61 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
       await deleteEmployee(nid);
       window.location.reload();
     }
+  };
+
+  // Edit handlers
+  const handleEditOpen = (emp: any) => {
+    setEditErrorMsg("");
+    setEditData({
+      nid: emp.nid || "",
+      name: emp.name || "",
+      jenis_kelamin: emp.jenis_kelamin || "L",
+      tanggal_lahir: emp.tanggal_lahir || "",
+      tanggal_masuk: emp.tanggal_masuk || "",
+      pendidikan: emp.pendidikan || "",
+      grade: emp.grade || "",
+      bidang: emp.bidang || "",
+      sub_bidang: emp.sub_bidang || "",
+      jabatan: emp.jabatan || "",
+      jenjang_jabatan: emp.jenjang_jabatan || "",
+      pog: emp.pog ?? 0,
+      masa_kerja: emp.masa_kerja ?? 0,
+      status_aktif: emp.status_aktif || "aktif",
+      status_pegawai: "Organik",
+      email: emp.email || "",
+      phone: emp.phone || "",
+      keterangan: emp.keterangan || "",
+      tanggal_pensiun: emp.tanggal_pensiun || "",
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleEditChange = (field: keyof EmployeeInput, value: any) => {
+    setEditData(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, [field]: value };
+      if (field === "tanggal_masuk") next.masa_kerja = calculateYears(value);
+      return next;
+    });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editData) return;
+    setIsEditing(true);
+    setEditErrorMsg("");
+
+    // NID adalah primary key, tidak diikutkan di payload update
+    const { nid, ...payload } = editData;
+    const res = await updateEmployee(nid, payload);
+
+    if (res.success) {
+      setIsEditOpen(false);
+      window.location.reload();
+    } else {
+      setEditErrorMsg(res.error || "Gagal memperbarui data");
+    }
+    setIsEditing(false);
   };
 
   // Excel Import handlers
@@ -650,6 +709,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                         <DropdownMenu>
                           <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}><MoreHorizontal className="h-4 w-4" /></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-white">
+                            <DropdownMenuItem onClick={() => handleEditOpen(emp)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                             <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(emp.nid)}><Trash2 className="mr-2 h-4 w-4" /> Hapus</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -662,6 +722,124 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
           </Table>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if (!open) setEditData(null); }}>
+        <DialogContent className="sm:max-w-[720px] bg-white border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Edit Pegawai Organik</DialogTitle>
+            <DialogDescription className="text-slate-500">Perbarui data pegawai. NID tidak dapat diubah.</DialogDescription>
+          </DialogHeader>
+          {editData && (
+            <form onSubmit={handleEditSubmit}>
+              <div className="grid gap-5 py-4">
+                {editErrorMsg && <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200">{editErrorMsg}</div>}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_nid">NID</Label>
+                    <Input id="edit_nid" value={editData.nid} readOnly className="bg-slate-100 text-slate-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_name">Nama Lengkap <span className="text-red-500">*</span></Label>
+                    <Input id="edit_name" required value={editData.name} onChange={e => handleEditChange('name', e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_gender">Jenis Kelamin <span className="text-red-500">*</span></Label>
+                    <Select required value={editData.jenis_kelamin || ""} onValueChange={v => v && handleEditChange('jenis_kelamin', v)}>
+                      <SelectTrigger id="edit_gender"><SelectValue placeholder="Pilih L/P" /></SelectTrigger>
+                      <SelectContent className="bg-white"><SelectItem value="L">Laki-laki (L)</SelectItem><SelectItem value="P">Perempuan (P)</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_dob">Tanggal Lahir</Label>
+                    <Input id="edit_dob" type="date" value={editData.tanggal_lahir || ""} onChange={e => handleEditChange('tanggal_lahir', e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_tgl_masuk" className="text-blue-700 font-bold flex items-center gap-2">
+                      <Calendar className="h-4 w-4" /> Tanggal Masuk
+                    </Label>
+                    <Input id="edit_tgl_masuk" type="date" value={editData.tanggal_masuk || ""} onChange={e => handleEditChange('tanggal_masuk', e.target.value)} className="border-blue-200 focus:ring-blue-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_masa_kerja" className="text-blue-700 font-bold">Masa Kerja (Otomatis)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input id="edit_masa_kerja" type="number" readOnly value={editData.masa_kerja || 0} className="bg-blue-100 border-blue-200 font-bold text-blue-800" />
+                      <span className="text-sm font-medium text-blue-600">Tahun</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_pendidikan">Pendidikan</Label>
+                    <Input id="edit_pendidikan" value={editData.pendidikan || ""} onChange={e => handleEditChange('pendidikan', e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_grade">Grade</Label>
+                    <Input id="edit_grade" value={editData.grade || ""} onChange={e => handleEditChange('grade', e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_bidang">Bidang</Label>
+                    <Input id="edit_bidang" value={editData.bidang || ""} onChange={e => handleEditChange('bidang', e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_subbidang">Sub Bidang</Label>
+                    <Input id="edit_subbidang" value={editData.sub_bidang || ""} onChange={e => handleEditChange('sub_bidang', e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_jabatan">Jabatan</Label>
+                    <Input id="edit_jabatan" value={editData.jabatan || ""} onChange={e => handleEditChange('jabatan', e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_jenjang">Jenjang Jabatan</Label>
+                    <Input id="edit_jenjang" value={editData.jenjang_jabatan || ""} onChange={e => handleEditChange('jenjang_jabatan', e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_pog">POG</Label>
+                    <Input id="edit_pog" type="number" value={editData.pog ?? ""} onChange={e => handleEditChange('pog', e.target.value === "" ? 0 : parseInt(e.target.value))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_tgl_pensiun">Tgl Pensiun</Label>
+                    <Input id="edit_tgl_pensiun" type="date" value={editData.tanggal_pensiun || ""} onChange={e => handleEditChange('tanggal_pensiun', e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_status_aktif">Status Karyawan</Label>
+                    <Select value={editData.status_aktif || ""} onValueChange={v => v && handleEditChange('status_aktif', v)}>
+                      <SelectTrigger id="edit_status_aktif"><SelectValue placeholder="Pilih status" /></SelectTrigger>
+                      <SelectContent className="bg-white"><SelectItem value="aktif">Aktif</SelectItem><SelectItem value="mutasi">Mutasi</SelectItem><SelectItem value="pensiun">Pensiun</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_phone">WhatsApp</Label>
+                    <Input id="edit_phone" value={editData.phone || ""} onChange={e => handleEditChange('phone', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => { setIsEditOpen(false); setEditData(null); }}>Batal</Button>
+                <Button type="submit" disabled={isEditing} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  {isEditing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Simpan Perubahan
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
