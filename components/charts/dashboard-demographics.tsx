@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EmployeeStatsChart } from "@/components/charts/employee-stats-chart";
 import { Users, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getFormasiWithActual } from "@/app/actions/formasi";
 
 export interface DemographicStats {
   ageData: any[];
@@ -11,7 +12,7 @@ export interface DemographicStats {
   educationData: any[];
   jenjangData: any[];
   gradeData: any[];
-  pogData: any[];
+  pegVsPogData: any[];
   total: number;
 }
 
@@ -25,7 +26,39 @@ export function DashboardDemographics({
   tad: DemographicStats;
 }) {
   const [group, setGroup] = useState<Group>("Organik");
-  const active = group === "Organik" ? organik : tad;
+  const [pegVsPog, setPegVsPog] = useState<any[]>([]);
+
+  // Muat data PEG vs POG (Bezetting vs Formasi Ideal) per bidang secara client-side
+  // agar dashboard SSR tetap cepat (pencocokan formasi cukup berat).
+  useEffect(() => {
+    let cancelled = false;
+    getFormasiWithActual().then((res) => {
+      if (cancelled || !res.success || !res.data) return;
+      const bidangMap: Record<string, { pog: number; peg: number }> = {};
+      res.data.forEach((r) => {
+        const b = r.bidang && r.bidang !== "-" ? r.bidang : "Lainnya";
+        if (!bidangMap[b]) bidangMap[b] = { pog: 0, peg: 0 };
+        bidangMap[b].pog += Number(r.formasiIdeal ?? 0);
+        bidangMap[b].peg += Number(r.bezetting ?? 0);
+      });
+      const agg = Object.entries(bidangMap)
+        .map(([name, v]) => ({
+          name,
+          POG: v.pog,
+          PEG: v.peg,
+          pct: v.pog > 0 ? Math.round((v.peg / v.pog) * 100) : 0,
+        }))
+        .filter((r) => r.POG > 0 || r.PEG > 0)
+        .sort((a, b) => b.POG - a.POG);
+      setPegVsPog(agg);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // PEG vs POG (formasi) hanya relevan untuk Organik
+  const active = group === "Organik"
+    ? { ...organik, pegVsPogData: pegVsPog }
+    : { ...tad, pegVsPogData: [] };
 
   const tabBase =
     "flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-lg transition-all";
@@ -68,7 +101,7 @@ export function DashboardDemographics({
         educationData={active.educationData}
         jenjangData={active.jenjangData}
         gradeData={active.gradeData}
-        pogData={active.pogData}
+        pegVsPogData={active.pegVsPogData}
       />
     </div>
   );

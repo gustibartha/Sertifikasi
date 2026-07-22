@@ -12,6 +12,7 @@ import {
   Pie,
   Cell,
   Legend,
+  LabelList,
 } from "recharts";
 import {
   Select,
@@ -31,7 +32,7 @@ const tooltipStyle = {
   fontSize: "13px",
 };
 
-type ChartType = "umur" | "gender" | "jabatan" | "pendidikan" | "jenjang" | "grade" | "pog";
+type ChartType = "umur" | "gender" | "jabatan" | "pendidikan" | "jenjang" | "grade" | "pegpog";
 
 const chartConfig: Record<ChartType, { title: string; description: string }> = {
   umur: { title: "Distribusi Usia Karyawan", description: "Komposisi usia pegawai dari database." },
@@ -40,7 +41,7 @@ const chartConfig: Record<ChartType, { title: string; description: string }> = {
   pendidikan: { title: "Distribusi Pendidikan", description: "Komposisi jenjang pendidikan terakhir pegawai." },
   jenjang: { title: "Distribusi Jenjang Jabatan", description: "Sebaran pegawai berdasarkan level jenjang jabatan." },
   grade: { title: "Distribusi Grade", description: "Sebaran pegawai berdasarkan Grade." },
-  pog: { title: "Distribusi POG", description: "Sebaran pegawai berdasarkan nilai POG." },
+  pegpog: { title: "PEG vs POG (Keterisian Formasi)", description: "Perbandingan Bezetting (PEG) dengan Formasi Ideal (POG) per bidang." },
 };
 
 interface EmployeeStatsChartProps {
@@ -49,16 +50,16 @@ interface EmployeeStatsChartProps {
   educationData: any[];
   jenjangData: any[];
   gradeData: any[];
-  pogData: any[];
+  pegVsPogData: any[];
 }
 
-export function EmployeeStatsChart({ 
-  ageData = [], 
-  genderData = [], 
-  educationData = [], 
+export function EmployeeStatsChart({
+  ageData = [],
+  genderData = [],
+  educationData = [],
   jenjangData = [],
   gradeData = [],
-  pogData = []
+  pegVsPogData = []
 }: EmployeeStatsChartProps) {
   const [chartType, setChartType] = useState<ChartType>("umur");
 
@@ -117,6 +118,42 @@ export function EmployeeStatsChart({
     </ResponsiveContainer>
   );
 
+  const renderPegVsPog = (data: { name: string; POG: number; PEG: number; pct: number }[]) => {
+    if (!data || data.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-[350px] text-sm text-muted-foreground italic">
+          Data formasi tidak tersedia untuk kelompok ini.
+        </div>
+      );
+    }
+    return (
+      <ResponsiveContainer width="100%" height={350}>
+        <BarChart data={data} margin={{ top: 24, right: 10, left: -10, bottom: 0 }} barGap={2}>
+          <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} interval={0} angle={-15} textAnchor="end" height={60} />
+          <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+          <Tooltip
+            cursor={{ fill: "rgba(0,0,0,0.03)" }}
+            contentStyle={tooltipStyle}
+            formatter={(value: any, name: any) => [value, name === "POG" ? "Formasi Ideal (POG)" : "Bezetting (PEG)"]}
+          />
+          <Legend
+            verticalAlign="top"
+            height={28}
+            formatter={(value: string) => (
+              <span style={{ color: "var(--foreground)", fontSize: "11px" }}>
+                {value === "POG" ? "Formasi Ideal (POG)" : "Bezetting (PEG)"}
+              </span>
+            )}
+          />
+          <Bar dataKey="POG" fill="#94a3b8" radius={[4, 4, 0, 0]} name="POG" />
+          <Bar dataKey="PEG" fill="#14b8a6" radius={[4, 4, 0, 0]} name="PEG">
+            <LabelList dataKey="pct" position="top" formatter={(v: any) => `${v}%`} style={{ fontSize: "10px", fontWeight: 700, fill: "#0f766e" }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+
   const renderChart = () => {
     switch (chartType) {
       case "umur":
@@ -130,18 +167,30 @@ export function EmployeeStatsChart({
         return renderPieChart(educationData);
       case "grade":
         return renderBarChart(gradeData, "#14b8a6");
-      case "pog":
-        return renderBarChart(pogData, "#f59e0b");
+      case "pegpog":
+        return renderPegVsPog(pegVsPogData);
       default:
         return null;
     }
   };
 
+  // Ringkasan persentase keterisian keseluruhan (untuk metrik PEG vs POG)
+  const totalPOG = pegVsPogData.reduce((a, r) => a + Number(r.POG || 0), 0);
+  const totalPEG = pegVsPogData.reduce((a, r) => a + Number(r.PEG || 0), 0);
+  const overallPct = totalPOG > 0 ? Math.round((totalPEG / totalPOG) * 100) : 0;
+
   return (
     <Card className="xl:col-span-2 shadow-sm">
       <CardHeader className="flex flex-row items-start sm:items-center justify-between pb-4">
         <div className="space-y-1">
-          <CardTitle>{chartConfig[chartType].title}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {chartConfig[chartType].title}
+            {chartType === "pegpog" && pegVsPogData.length > 0 && (
+              <span className="text-sm font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md">
+                {overallPct}% terisi ({totalPEG}/{totalPOG})
+              </span>
+            )}
+          </CardTitle>
           <CardDescription>{chartConfig[chartType].description}</CardDescription>
         </div>
         <div className="w-[180px]">
@@ -155,7 +204,7 @@ export function EmployeeStatsChart({
               <SelectItem value="pendidikan">Pendidikan</SelectItem>
               <SelectItem value="jenjang">Jenjang Jabatan</SelectItem>
               <SelectItem value="grade">Grade</SelectItem>
-              <SelectItem value="pog">POG</SelectItem>
+              <SelectItem value="pegpog">PEG vs POG</SelectItem>
             </SelectContent>
           </Select>
         </div>

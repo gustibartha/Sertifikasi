@@ -41,12 +41,6 @@ function computeDemographics(list: any[], today: Date): DemographicStats {
   const eduMap: Record<string, number> = {};
   const jenjangMap: Record<string, number> = {};
   const gradeMap: Record<string, number> = {};
-  const pogStats = [
-    { name: "< 70", total: 0 },
-    { name: "70-80", total: 0 },
-    { name: "81-90", total: 0 },
-    { name: "> 90", total: 0 },
-  ];
 
   list.forEach((emp) => {
     if (emp.tanggal_lahir) {
@@ -69,14 +63,6 @@ function computeDemographics(list: any[], today: Date): DemographicStats {
 
     const grade = emp.grade || "N/A";
     gradeMap[grade] = (gradeMap[grade] || 0) + 1;
-
-    if (emp.pog !== null && emp.pog !== undefined) {
-      const p = emp.pog;
-      if (p < 70) pogStats[0].total++;
-      else if (p <= 80) pogStats[1].total++;
-      else if (p <= 90) pogStats[2].total++;
-      else pogStats[3].total++;
-    }
   });
 
   return {
@@ -85,7 +71,7 @@ function computeDemographics(list: any[], today: Date): DemographicStats {
     educationData: Object.entries(eduMap).map(([name, value]) => ({ name, value })),
     jenjangData: Object.entries(jenjangMap).map(([name, total]) => ({ name, total })),
     gradeData: Object.entries(gradeMap).map(([name, total]) => ({ name, total })),
-    pogData: pogStats,
+    pegVsPogData: [],
     total: list.length,
   };
 }
