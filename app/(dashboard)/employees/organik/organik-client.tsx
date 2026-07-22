@@ -26,7 +26,9 @@ import {
   FileSpreadsheet,
   X,
   FileDown,
-  Calendar
+  Calendar,
+  Filter,
+  RotateCcw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -54,6 +56,7 @@ import {
 } from "@/components/ui/select";
 import * as XLSX from "xlsx";
 import { addEmployee, deleteEmployee, importEmployeesCSV, EmployeeInput } from "@/app/actions/employee";
+import { normalizePendidikan } from "@/lib/utils";
 
 // Helper to convert Excel Serial Date to YYYY-MM-DD
 function excelDateToJSDate(serial: any): string | null {
@@ -111,6 +114,12 @@ const EXCEL_TEMPLATE_DATA = [
 
 export function OrganikClient({ initialData }: { initialData: any[] }) {
   const [search, setSearch] = useState("");
+  const [filterBidang, setFilterBidang] = useState("all");
+  const [filterGrade, setFilterGrade] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterJenjang, setFilterJenjang] = useState("all");
+  const [filterGender, setFilterGender] = useState("all");
+  const [filterPendidikan, setFilterPendidikan] = useState("all");
   const [isOpen, setIsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -277,10 +286,37 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const filteredData = initialData.filter(emp => 
-    emp.name.toLowerCase().includes(search.toLowerCase()) || 
-    emp.nid.toLowerCase().includes(search.toLowerCase())
-  );
+  // Unique values for filter dropdowns (sorted, non-empty)
+  const uniqueBidang = Array.from(new Set(initialData.map(e => e.bidang).filter(Boolean))).sort();
+  const uniqueGrade = Array.from(new Set(initialData.map(e => e.grade).filter(Boolean))).sort();
+  const uniqueStatus = Array.from(new Set(initialData.map(e => e.status_aktif).filter(Boolean))).sort();
+  const uniqueJenjang = Array.from(new Set(initialData.map(e => e.jenjang_jabatan).filter(Boolean))).sort();
+  const uniquePendidikan = Array.from(new Set(initialData.map(e => normalizePendidikan(e.pendidikan)))).sort();
+
+  const activeFilterCount = [filterBidang, filterGrade, filterStatus, filterJenjang, filterGender, filterPendidikan].filter(v => v !== "all").length;
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilterBidang("all");
+    setFilterGrade("all");
+    setFilterStatus("all");
+    setFilterJenjang("all");
+    setFilterGender("all");
+    setFilterPendidikan("all");
+  };
+
+  const filteredData = initialData.filter(emp => {
+    const matchSearch =
+      emp.name.toLowerCase().includes(search.toLowerCase()) ||
+      emp.nid.toLowerCase().includes(search.toLowerCase());
+    const matchBidang = filterBidang === "all" || emp.bidang === filterBidang;
+    const matchGrade = filterGrade === "all" || emp.grade === filterGrade;
+    const matchStatus = filterStatus === "all" || emp.status_aktif === filterStatus;
+    const matchJenjang = filterJenjang === "all" || emp.jenjang_jabatan === filterJenjang;
+    const matchGender = filterGender === "all" || emp.jenis_kelamin === filterGender;
+    const matchPendidikan = filterPendidikan === "all" || normalizePendidikan(emp.pendidikan) === filterPendidikan;
+    return matchSearch && matchBidang && matchGrade && matchStatus && matchJenjang && matchGender && matchPendidikan;
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -495,11 +531,77 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm border">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-4">
+          <div className="relative flex-1 lg:max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
             <Input placeholder="Cari nama atau NID..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 text-slate-500 text-sm font-medium pr-1">
+              <Filter className="h-4 w-4" /> Filter:
+            </div>
+
+            <Select value={filterBidang} onValueChange={(v) => v && setFilterBidang(v)}>
+              <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Bidang" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Bidang</SelectItem>
+                {uniqueBidang.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterGrade} onValueChange={(v) => v && setFilterGrade(v)}>
+              <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Grade" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Grade</SelectItem>
+                {uniqueGrade.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterStatus} onValueChange={(v) => v && setFilterStatus(v)}>
+              <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Status</SelectItem>
+                {uniqueStatus.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterJenjang} onValueChange={(v) => v && setFilterJenjang(v)}>
+              <SelectTrigger className="w-[170px] h-9"><SelectValue placeholder="Jenjang Jabatan" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Jenjang</SelectItem>
+                {uniqueJenjang.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterPendidikan} onValueChange={(v) => v && setFilterPendidikan(v)}>
+              <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Pendidikan" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Pendidikan</SelectItem>
+                {uniquePendidikan.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterGender} onValueChange={(v) => v && setFilterGender(v)}>
+              <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Jenis Kelamin" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Gender</SelectItem>
+                <SelectItem value="L">Laki-laki</SelectItem>
+                <SelectItem value="P">Perempuan</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(activeFilterCount > 0 || search) && (
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center gap-1.5">
+                <RotateCcw className="h-3.5 w-3.5" /> Reset
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-3 text-sm text-slate-500">
+          <span>Menampilkan <span className="font-bold text-slate-700">{filteredData.length}</span> dari {initialData.length} pegawai</span>
+          {activeFilterCount > 0 && <span className="text-blue-600 font-medium">{activeFilterCount} filter aktif</span>}
         </div>
 
         <div className="rounded-md border overflow-x-auto">

@@ -19,11 +19,76 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Users, AlertTriangle, Clock, ArrowRight, UserCheck } from "lucide-react";
 import Link from "next/link";
-import { EmployeeStatsChart } from "@/components/charts/employee-stats-chart";
+import { DashboardDemographics, DemographicStats } from "@/components/charts/dashboard-demographics";
 import { CertificationStatsChart } from "@/components/charts/certification-stats-chart";
 import { db } from "@/lib/db";
 import { employees, certifications } from "@/lib/schema";
 import { eq, gte, lte, and, sql } from "drizzle-orm";
+import { normalizePendidikan } from "@/lib/utils";
+
+// Hitung statistik demografi untuk satu kelompok pegawai (Organik / TAD)
+function computeDemographics(list: any[], today: Date): DemographicStats {
+  const ageStats = [
+    { name: "20-30 thn", total: 0 },
+    { name: "31-40 thn", total: 0 },
+    { name: "41-50 thn", total: 0 },
+    { name: "51+ thn", total: 0 },
+  ];
+  const genderStats = [
+    { name: "Laki-laki", value: 0 },
+    { name: "Perempuan", value: 0 },
+  ];
+  const eduMap: Record<string, number> = {};
+  const jenjangMap: Record<string, number> = {};
+  const gradeMap: Record<string, number> = {};
+  const pogStats = [
+    { name: "< 70", total: 0 },
+    { name: "70-80", total: 0 },
+    { name: "81-90", total: 0 },
+    { name: "> 90", total: 0 },
+  ];
+
+  list.forEach((emp) => {
+    if (emp.tanggal_lahir) {
+      const age = today.getFullYear() - new Date(emp.tanggal_lahir).getFullYear();
+      if (age <= 30) ageStats[0].total++;
+      else if (age <= 40) ageStats[1].total++;
+      else if (age <= 50) ageStats[2].total++;
+      else ageStats[3].total++;
+    }
+
+    if (emp.jenis_kelamin === "L") genderStats[0].value++;
+    else if (emp.jenis_kelamin === "P") genderStats[1].value++;
+
+    // Pendidikan: hanya jenjang/pendidikan terakhir
+    const edu = normalizePendidikan(emp.pendidikan);
+    eduMap[edu] = (eduMap[edu] || 0) + 1;
+
+    const jenjang = emp.jenjang_jabatan || "Lainnya";
+    jenjangMap[jenjang] = (jenjangMap[jenjang] || 0) + 1;
+
+    const grade = emp.grade || "N/A";
+    gradeMap[grade] = (gradeMap[grade] || 0) + 1;
+
+    if (emp.pog !== null && emp.pog !== undefined) {
+      const p = emp.pog;
+      if (p < 70) pogStats[0].total++;
+      else if (p <= 80) pogStats[1].total++;
+      else if (p <= 90) pogStats[2].total++;
+      else pogStats[3].total++;
+    }
+  });
+
+  return {
+    ageData: ageStats,
+    genderData: genderStats,
+    educationData: Object.entries(eduMap).map(([name, value]) => ({ name, value })),
+    jenjangData: Object.entries(jenjangMap).map(([name, total]) => ({ name, total })),
+    gradeData: Object.entries(gradeMap).map(([name, total]) => ({ name, total })),
+    pogData: pogStats,
+    total: list.length,
+  };
+}
 
 export default async function DashboardPage() {
   // --- Data Fetching Logic ---
@@ -77,79 +142,16 @@ export default async function DashboardPage() {
     );
   const totalRetiringThisYear = retiringThisYearRes[0].count;
 
-  // 4. Data Chart Demografi (Dynamic)
+  // 4. Data Chart Demografi (Dynamic) — dipisah antara Organik dan TAD
   const allEmployees = await db.select().from(employees);
-  
-  // Distribusi Usia
-  const ageStats = [
-    { name: "20-30 thn", total: 0 },
-    { name: "31-40 thn", total: 0 },
-    { name: "41-50 thn", total: 0 },
-    { name: "51+ thn", total: 0 },
-  ];
-  
-  // Distribusi Gender
-  const genderStats = [
-    { name: "Laki-laki", value: 0 },
-    { name: "Perempuan", value: 0 },
-  ];
-
-  // Distribusi Pendidikan
-  const eduMap: Record<string, number> = {};
-  
-  // Distribusi Jenjang
-  const jenjangMap: Record<string, number> = {};
-
-  // Distribusi Grade
-  const gradeMap: Record<string, number> = {};
-
-  // Distribusi POG (Range)
-  const pogStats = [
-    { name: "< 70", total: 0 },
-    { name: "70-80", total: 0 },
-    { name: "81-90", total: 0 },
-    { name: "> 90", total: 0 },
-  ];
-
-  allEmployees.forEach(emp => {
-    // Usia
-    if (emp.tanggal_lahir) {
-      const age = today.getFullYear() - new Date(emp.tanggal_lahir).getFullYear();
-      if (age <= 30) ageStats[0].total++;
-      else if (age <= 40) ageStats[1].total++;
-      else if (age <= 50) ageStats[2].total++;
-      else ageStats[3].total++;
-    }
-
-    // Gender
-    if (emp.jenis_kelamin === 'L') genderStats[0].value++;
-    else if (emp.jenis_kelamin === 'P') genderStats[1].value++;
-
-    // Pendidikan
-    const edu = emp.pendidikan || "Tidak Terdata";
-    eduMap[edu] = (eduMap[edu] || 0) + 1;
-
-    // Jenjang
-    const jenjang = emp.jenjang_jabatan || "Lainnya";
-    jenjangMap[jenjang] = (jenjangMap[jenjang] || 0) + 1;
-    
-    // Grade
-    const grade = emp.grade || "N/A";
-    gradeMap[grade] = (gradeMap[grade] || 0) + 1;
-
-    // POG
-    if (emp.pog !== null) {
-      const p = emp.pog;
-      if (p < 70) pogStats[0].total++;
-      else if (p <= 80) pogStats[1].total++;
-      else if (p <= 90) pogStats[2].total++;
-      else pogStats[3].total++;
-    }
-  });
-
-  const educationStats = Object.entries(eduMap).map(([name, value]) => ({ name, value }));
-  const jenjangStats = Object.entries(jenjangMap).map(([name, total]) => ({ name, total }));
-  const gradeStats = Object.entries(gradeMap).map(([name, total]) => ({ name, total }));
+  const organikStats = computeDemographics(
+    allEmployees.filter((e) => e.status_pegawai === "Organik"),
+    today
+  );
+  const tadStats = computeDemographics(
+    allEmployees.filter((e) => e.status_pegawai === "TAD"),
+    today
+  );
 
   // Helper untuk format tanggal & sisa hari
   const calculateDaysLeft = (expiryDate: string) => {
@@ -220,14 +222,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 grid-cols-1 xl:grid-cols-3">
-        <EmployeeStatsChart 
-          ageData={ageStats} 
-          genderData={genderStats}
-          educationData={educationStats}
-          jenjangData={jenjangStats}
-          gradeData={gradeStats}
-          pogData={pogStats}
-        />
+        <DashboardDemographics organik={organikStats} tad={tadStats} />
 
         <CertificationStatsChart />
       </div>

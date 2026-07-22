@@ -22,7 +22,9 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   X,
-  FileDown
+  FileDown,
+  Filter,
+  RotateCcw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -77,6 +79,9 @@ const VENDOR_LIST = [
 
 export function TadClient({ initialData }: { initialData: any[] }) {
   const [search, setSearch] = useState("");
+  const [filterVendor, setFilterVendor] = useState("all");
+  const [filterBidang, setFilterBidang] = useState("all");
+  const [filterJabatan, setFilterJabatan] = useState("all");
   const [isOpen, setIsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -203,10 +208,29 @@ export function TadClient({ initialData }: { initialData: any[] }) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const filteredData = initialData.filter(emp => 
-    emp.name.toLowerCase().includes(search.toLowerCase()) || 
-    emp.nid.toLowerCase().includes(search.toLowerCase())
-  );
+  // Unique values for filter dropdowns (sorted, non-empty)
+  const uniqueVendor = Array.from(new Set(initialData.map(e => e.perusahaan_asal).filter(Boolean))).sort();
+  const uniqueBidang = Array.from(new Set(initialData.map(e => e.bidang).filter(Boolean))).sort();
+  const uniqueJabatan = Array.from(new Set(initialData.map(e => e.jabatan).filter(Boolean))).sort();
+
+  const activeFilterCount = [filterVendor, filterBidang, filterJabatan].filter(v => v !== "all").length;
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilterVendor("all");
+    setFilterBidang("all");
+    setFilterJabatan("all");
+  };
+
+  const filteredData = initialData.filter(emp => {
+    const matchSearch =
+      emp.name.toLowerCase().includes(search.toLowerCase()) ||
+      emp.nid.toLowerCase().includes(search.toLowerCase());
+    const matchVendor = filterVendor === "all" || emp.perusahaan_asal === filterVendor;
+    const matchBidang = filterBidang === "all" || emp.bidang === filterBidang;
+    const matchJabatan = filterJabatan === "all" || emp.jabatan === filterJabatan;
+    return matchSearch && matchVendor && matchBidang && matchJabatan;
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -372,11 +396,52 @@ export function TadClient({ initialData }: { initialData: any[] }) {
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm border">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-4">
+          <div className="relative flex-1 lg:max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
             <Input placeholder="Cari TAD..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 text-slate-500 text-sm font-medium pr-1">
+              <Filter className="h-4 w-4" /> Filter:
+            </div>
+
+            <Select value={filterVendor} onValueChange={(v) => v && setFilterVendor(v)}>
+              <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Vendor" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Vendor</SelectItem>
+                {uniqueVendor.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterBidang} onValueChange={(v) => v && setFilterBidang(v)}>
+              <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Bidang" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Bidang</SelectItem>
+                {uniqueBidang.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterJabatan} onValueChange={(v) => v && setFilterJabatan(v)}>
+              <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Jabatan" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Jabatan</SelectItem>
+                {uniqueJabatan.map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {(activeFilterCount > 0 || search) && (
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center gap-1.5">
+                <RotateCcw className="h-3.5 w-3.5" /> Reset
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-3 text-sm text-slate-500">
+          <span>Menampilkan <span className="font-bold text-slate-700">{filteredData.length}</span> dari {initialData.length} TAD</span>
+          {activeFilterCount > 0 && <span className="text-blue-600 font-medium">{activeFilterCount} filter aktif</span>}
         </div>
 
         <div className="rounded-md border overflow-x-auto">
