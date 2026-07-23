@@ -578,15 +578,13 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                       <Input id="phone" value={formData.phone || ""} onChange={e => handleInputChange('phone', e.target.value)} />
                     </div>
                   </div>
-                  {formData.status_aktif === "mutasi" && (
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-xl border border-amber-100">
-                      <div className="space-y-2">
-                        <Label htmlFor="tgl_mutasi" className="text-amber-700 font-bold">Tanggal Mutasi</Label>
-                        <Input id="tgl_mutasi" type="date" value={formData.tanggal_mutasi || ""} onChange={e => handleInputChange('tanggal_mutasi', e.target.value)} className="border-amber-200 focus:ring-amber-500" />
-                        <p className="text-[10px] text-amber-600 italic">Periode/tanggal pegawai dimutasi.</p>
-                      </div>
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-xl border border-amber-100">
+                    <div className="space-y-2">
+                      <Label htmlFor="tgl_mutasi" className="text-amber-700 font-bold">Tanggal Mutasi</Label>
+                      <Input id="tgl_mutasi" type="date" value={formData.tanggal_mutasi || ""} onChange={e => handleInputChange('tanggal_mutasi', e.target.value)} className="border-amber-200 focus:ring-amber-500" />
+                      <p className="text-[10px] text-amber-600 italic">Isi bila pegawai dimutasi (opsional).</p>
                     </div>
-                  )}
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Batal</Button>
@@ -716,9 +714,9 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                       <TableCell className="text-xs">{usia}</TableCell>
                       <TableCell>
                         <Badge className={emp.status_aktif === "aktif" ? "bg-emerald-500" : "bg-slate-400"}>{emp.status_aktif || "Aktif"}</Badge>
-                        {emp.status_aktif === "mutasi" && emp.tanggal_mutasi && (
+                        {emp.tanggal_mutasi && (
                           <div className="text-[10px] text-amber-600 mt-1">
-                            {new Date(emp.tanggal_mutasi).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            Mutasi: {new Date(emp.tanggal_mutasi).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </div>
                         )}
                       </TableCell>
@@ -845,15 +843,13 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                     <Input id="edit_phone" value={editData.phone || ""} onChange={e => handleEditChange('phone', e.target.value)} />
                   </div>
                 </div>
-                {editData.status_aktif === "mutasi" && (
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-xl border border-amber-100">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit_tgl_mutasi" className="text-amber-700 font-bold">Tanggal Mutasi</Label>
-                      <Input id="edit_tgl_mutasi" type="date" value={editData.tanggal_mutasi || ""} onChange={e => handleEditChange('tanggal_mutasi', e.target.value)} className="border-amber-200 focus:ring-amber-500" />
-                      <p className="text-[10px] text-amber-600 italic">Periode/tanggal pegawai dimutasi.</p>
-                    </div>
+                <div className="grid grid-cols-2 gap-4 p-4 bg-amber-50/60 rounded-xl border border-amber-100">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_tgl_mutasi" className="text-amber-700 font-bold">Tanggal Mutasi</Label>
+                    <Input id="edit_tgl_mutasi" type="date" value={editData.tanggal_mutasi || ""} onChange={e => handleEditChange('tanggal_mutasi', e.target.value)} className="border-amber-200 focus:ring-amber-500" />
+                    <p className="text-[10px] text-amber-600 italic">Isi bila pegawai dimutasi (opsional).</p>
                   </div>
-                )}
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => { setIsEditOpen(false); setEditData(null); }}>Batal</Button>

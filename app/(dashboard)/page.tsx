@@ -79,9 +79,10 @@ function computeDemographics(list: any[], today: Date): DemographicStats {
 export default async function DashboardPage() {
   // --- Data Fetching Logic ---
   
-  // 1. Total Karyawan
-  const totalOrganikRes = await db.select({ count: sql<number>`count(*)` }).from(employees).where(eq(employees.status_pegawai, 'Organik'));
-  const totalTADRes = await db.select({ count: sql<number>`count(*)` }).from(employees).where(eq(employees.status_pegawai, 'TAD'));
+  // 1. Total Karyawan (hanya yang berstatus aktif)
+  const aktifCond = sql`(${employees.status_aktif} is null or lower(${employees.status_aktif}) = 'aktif')`;
+  const totalOrganikRes = await db.select({ count: sql<number>`count(*)` }).from(employees).where(and(eq(employees.status_pegawai, 'Organik'), aktifCond));
+  const totalTADRes = await db.select({ count: sql<number>`count(*)` }).from(employees).where(and(eq(employees.status_pegawai, 'TAD'), aktifCond));
   const totalOrganik = totalOrganikRes[0].count;
   const totalTAD = totalTADRes[0].count;
 
