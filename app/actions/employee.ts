@@ -106,6 +106,7 @@ export async function importEmployeesCSV(rows: EmployeeInput[]) {
             masa_kerja: row.masa_kerja,
             tanggal_masuk: row.tanggal_masuk,
             status_aktif: row.status_aktif,
+            tanggal_mutasi: row.tanggal_mutasi,
             email: row.email,
             phone: row.phone,
             keterangan: row.keterangan,
