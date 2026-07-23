@@ -27,38 +27,58 @@ export function DashboardDemographics({
 }) {
   const [group, setGroup] = useState<Group>("Organik");
   const [pegVsPog, setPegVsPog] = useState<any[]>([]);
+  const [pegVsPogMeta, setPegVsPogMeta] = useState<{ unmatched: number; totalPosisi: number }>({ unmatched: 0, totalPosisi: 0 });
 
-  // Muat data PEG vs POG (Bezetting vs Formasi Ideal) per bidang secara client-side
-  // agar dashboard SSR tetap cepat (pencocokan formasi cukup berat).
+  // Muat data PEG vs POG (Bezetting vs Formasi Ideal) client-side agar dashboard SSR
+  // tetap cepat (pencocokan formasi cukup berat). Dikategorikan per posisi:
+  // PEG>POG / PEG<POG / PEG=POG, dipecah Struktural vs Fungsional (dari jenjang jabatan).
   useEffect(() => {
     let cancelled = false;
     getFormasiWithActual().then((res) => {
       if (cancelled || !res.success || !res.data) return;
-      const bidangMap: Record<string, { pog: number; peg: number }> = {};
+
+      // Bentuk grup posisi: baris ber-formasiIdeal jadi header, baris null menempel ke atasnya
+      const groups: { pog: number; peg: number; struktural: boolean }[] = [];
+      let cur: { pog: number; peg: number; struktural: boolean } | null = null;
       res.data.forEach((r) => {
-        const b = r.bidang && r.bidang !== "-" ? r.bidang : "Lainnya";
-        if (!bidangMap[b]) bidangMap[b] = { pog: 0, peg: 0 };
-        bidangMap[b].pog += Number(r.formasiIdeal ?? 0);
-        bidangMap[b].peg += Number(r.bezetting ?? 0);
+        if (r.formasiIdeal !== null) {
+          cur = {
+            pog: Number(r.formasiIdeal),
+            peg: Number(r.bezetting ?? 0),
+            struktural: /manajemen/i.test(r.jenjangJabatan || ""),
+          };
+          groups.push(cur);
+        } else if (cur) {
+          cur.peg += Number(r.bezetting ?? 0);
+        }
       });
-      const agg = Object.entries(bidangMap)
-        .map(([name, v]) => ({
-          name,
-          POG: v.pog,
-          PEG: v.peg,
-          pct: v.pog > 0 ? Math.round((v.peg / v.pog) * 100) : 0,
-        }))
-        .filter((r) => r.POG > 0 || r.PEG > 0)
-        .sort((a, b) => b.POG - a.POG);
-      setPegVsPog(agg);
+
+      const counts = { gtF: 0, ltS: 0, gtS: 0, ltF: 0, eq: 0 };
+      groups.forEach((g) => {
+        if (g.peg === g.pog) counts.eq++;
+        else if (g.peg > g.pog) g.struktural ? counts.gtS++ : counts.gtF++;
+        else g.struktural ? counts.ltS++ : counts.ltF++;
+      });
+
+      // Urutan & warna sesuai spesifikasi (gambar acuan)
+      const cats = [
+        { key: "gtF", label: "PEG > POG (Fungsional)", count: counts.gtF, color: "#F5A623" },
+        { key: "ltS", label: "PEG < POG (Struktural)", count: counts.ltS, color: "#E53935" },
+        { key: "gtS", label: "PEG > POG (Struktural)", count: counts.gtS, color: "#FBD38D" },
+        { key: "ltF", label: "PEG < POG (Fungsional)", count: counts.ltF, color: "#FDE047" },
+        { key: "eq", label: "PEG = POG", count: counts.eq, color: "#CBD5E1" },
+      ];
+
+      setPegVsPog(cats);
+      setPegVsPogMeta({ unmatched: res.unmatched ?? 0, totalPosisi: groups.length });
     });
     return () => { cancelled = true; };
   }, []);
 
   // PEG vs POG (formasi) hanya relevan untuk Organik
   const active = group === "Organik"
-    ? { ...organik, pegVsPogData: pegVsPog }
-    : { ...tad, pegVsPogData: [] };
+    ? { ...organik, pegVsPogData: pegVsPog, pegVsPogMeta }
+    : { ...tad, pegVsPogData: [], pegVsPogMeta: { unmatched: 0, totalPosisi: 0 } };
 
   const tabBase =
     "flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-lg transition-all";
@@ -102,6 +122,7 @@ export function DashboardDemographics({
         jenjangData={active.jenjangData}
         gradeData={active.gradeData}
         pegVsPogData={active.pegVsPogData}
+        pegVsPogMeta={active.pegVsPogMeta}
       />
     </div>
   );

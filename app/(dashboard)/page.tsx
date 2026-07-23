@@ -128,14 +128,17 @@ export default async function DashboardPage() {
     );
   const totalRetiringThisYear = retiringThisYearRes[0].count;
 
-  // 4. Data Chart Demografi (Dynamic) — dipisah antara Organik dan TAD
+  // 4. Data Chart Demografi (Dynamic) — dipisah antara Organik dan TAD,
+  //    hanya menghitung karyawan yang berstatus aktif.
   const allEmployees = await db.select().from(employees);
+  const isActive = (e: typeof allEmployees[number]) =>
+    !e.status_aktif || e.status_aktif.toLowerCase() === "aktif";
   const organikStats = computeDemographics(
-    allEmployees.filter((e) => e.status_pegawai === "Organik"),
+    allEmployees.filter((e) => e.status_pegawai === "Organik" && isActive(e)),
     today
   );
   const tadStats = computeDemographics(
-    allEmployees.filter((e) => e.status_pegawai === "TAD"),
+    allEmployees.filter((e) => e.status_pegawai === "TAD" && isActive(e)),
     today
   );
 

@@ -51,6 +51,7 @@ interface EmployeeStatsChartProps {
   jenjangData: any[];
   gradeData: any[];
   pegVsPogData: any[];
+  pegVsPogMeta?: { unmatched: number; totalPosisi: number };
 }
 
 export function EmployeeStatsChart({
@@ -59,7 +60,8 @@ export function EmployeeStatsChart({
   educationData = [],
   jenjangData = [],
   gradeData = [],
-  pegVsPogData = []
+  pegVsPogData = [],
+  pegVsPogMeta = { unmatched: 0, totalPosisi: 0 }
 }: EmployeeStatsChartProps) {
   const [chartType, setChartType] = useState<ChartType>("umur");
 
@@ -118,7 +120,7 @@ export function EmployeeStatsChart({
     </ResponsiveContainer>
   );
 
-  const renderPegVsPog = (data: { name: string; POG: number; PEG: number; pct: number }[]) => {
+  const renderPegVsPog = (data: { key: string; label: string; count: number; color: string }[]) => {
     if (!data || data.length === 0) {
       return (
         <div className="flex items-center justify-center h-[350px] text-sm text-muted-foreground italic">
@@ -128,26 +130,15 @@ export function EmployeeStatsChart({
     }
     return (
       <ResponsiveContainer width="100%" height={350}>
-        <BarChart data={data} margin={{ top: 24, right: 10, left: -10, bottom: 0 }} barGap={2}>
-          <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} interval={0} angle={-15} textAnchor="end" height={60} />
-          <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-          <Tooltip
-            cursor={{ fill: "rgba(0,0,0,0.03)" }}
-            contentStyle={tooltipStyle}
-            formatter={(value: any, name: any) => [value, name === "POG" ? "Formasi Ideal (POG)" : "Bezetting (PEG)"]}
-          />
-          <Legend
-            verticalAlign="top"
-            height={28}
-            formatter={(value: string) => (
-              <span style={{ color: "var(--foreground)", fontSize: "11px" }}>
-                {value === "POG" ? "Formasi Ideal (POG)" : "Bezetting (PEG)"}
-              </span>
-            )}
-          />
-          <Bar dataKey="POG" fill="#94a3b8" radius={[4, 4, 0, 0]} name="POG" />
-          <Bar dataKey="PEG" fill="#14b8a6" radius={[4, 4, 0, 0]} name="PEG">
-            <LabelList dataKey="pct" position="top" formatter={(v: any) => `${v}%`} style={{ fontSize: "10px", fontWeight: 700, fill: "#0f766e" }} />
+        <BarChart data={data} layout="vertical" margin={{ top: 10, right: 48, left: 10, bottom: 0 }}>
+          <XAxis type="number" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+          <YAxis type="category" dataKey="label" stroke="var(--foreground)" fontSize={11} tickLine={false} axisLine={false} width={180} />
+          <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={tooltipStyle} formatter={(value: any) => [`${value} posisi`, "Jumlah"]} />
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Jumlah Posisi">
+            {data.map((entry) => (
+              <Cell key={entry.key} fill={entry.color} stroke="#e2e8f0" strokeWidth={entry.key === "eq" ? 1 : 0} />
+            ))}
+            <LabelList dataKey="count" position="right" style={{ fontSize: "12px", fontWeight: 700, fill: "var(--foreground)" }} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -174,10 +165,8 @@ export function EmployeeStatsChart({
     }
   };
 
-  // Ringkasan persentase keterisian keseluruhan (untuk metrik PEG vs POG)
-  const totalPOG = pegVsPogData.reduce((a, r) => a + Number(r.POG || 0), 0);
-  const totalPEG = pegVsPogData.reduce((a, r) => a + Number(r.PEG || 0), 0);
-  const overallPct = totalPOG > 0 ? Math.round((totalPEG / totalPOG) * 100) : 0;
+  // Ringkasan untuk metrik PEG vs POG (jumlah posisi per kategori)
+  const totalKategori = pegVsPogData.reduce((a, r) => a + Number(r.count || 0), 0);
 
   return (
     <Card className="xl:col-span-2 shadow-sm">
@@ -185,13 +174,17 @@ export function EmployeeStatsChart({
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2">
             {chartConfig[chartType].title}
-            {chartType === "pegpog" && pegVsPogData.length > 0 && (
-              <span className="text-sm font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md">
-                {overallPct}% terisi ({totalPEG}/{totalPOG})
+            {chartType === "pegpog" && totalKategori > 0 && (
+              <span className="text-sm font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                {totalKategori} posisi
               </span>
             )}
           </CardTitle>
-          <CardDescription>{chartConfig[chartType].description}</CardDescription>
+          <CardDescription>
+            {chartType === "pegpog" && pegVsPogMeta.unmatched > 0
+              ? `${chartConfig[chartType].description} • ${pegVsPogMeta.unmatched} pegawai belum terpetakan ke posisi.`
+              : chartConfig[chartType].description}
+          </CardDescription>
         </div>
         <div className="w-[180px]">
           <Select value={chartType} onValueChange={(v) => v && setChartType(v as ChartType)}>
