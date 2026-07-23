@@ -178,6 +178,35 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
     XLSX.writeFile(wb, "Template_Import_Organik_V2.xlsx");
   };
 
+  const handleExportExcel = () => {
+    const rows = filteredData.map((emp) => ({
+      NID: emp.nid,
+      Nama: emp.name,
+      "Jenis Kelamin": emp.jenis_kelamin || "",
+      "Tanggal Lahir": emp.tanggal_lahir || "",
+      "Tanggal Masuk": emp.tanggal_masuk || "",
+      "Masa Kerja (Thn)": calculateYears(emp.tanggal_masuk) || emp.masa_kerja || 0,
+      Pendidikan: emp.pendidikan || "",
+      Grade: emp.grade || "",
+      Bidang: emp.bidang || "",
+      "Sub Bidang": emp.sub_bidang || "",
+      Jabatan: emp.jabatan || "",
+      "Jenjang Jabatan": emp.jenjang_jabatan || "",
+      POG: emp.pog ?? "",
+      "Tanggal Pensiun": emp.tanggal_pensiun || "",
+      Status: emp.status_aktif || "aktif",
+      "Tanggal Mutasi": emp.tanggal_mutasi || "",
+      Email: emp.email || "",
+      WhatsApp: emp.phone || "",
+      Keterangan: emp.keterangan || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data Organik");
+    const tanggal = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(wb, `Data_Pegawai_Organik_${tanggal}.xlsx`);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -388,6 +417,12 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
           <p className="text-slate-500 mt-1">Kelola data demografi dan informasi pegawai Organik PLN NP.</p>
         </div>
         <div className="flex gap-2">
+          {/* Export Excel */}
+          <Button variant="outline" onClick={handleExportExcel} className="flex items-center gap-2 border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all">
+            <Download className="h-4 w-4" />
+            Export Excel
+          </Button>
+
           {/* Import Excel Dialog */}
           <Dialog open={isImportOpen} onOpenChange={(open) => { if (!open) handleCloseImport(); else setIsImportOpen(true); }}>
             <DialogTrigger render={<Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all" />}>
