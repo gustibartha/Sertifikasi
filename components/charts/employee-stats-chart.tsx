@@ -41,7 +41,7 @@ const chartConfig: Record<ChartType, { title: string; description: string }> = {
   pendidikan: { title: "Distribusi Pendidikan", description: "Komposisi jenjang pendidikan terakhir pegawai." },
   jenjang: { title: "Distribusi Jenjang Jabatan", description: "Sebaran pegawai berdasarkan level jenjang jabatan." },
   grade: { title: "Distribusi Grade", description: "Sebaran pegawai berdasarkan Grade." },
-  pegpog: { title: "PEG vs POG (Keterisian Formasi)", description: "Perbandingan Bezetting (PEG) dengan Formasi Ideal (POG) per bidang." },
+  pegpog: { title: "PEG vs POG (Keterisian Formasi)", description: "Jumlah karyawan menurut kondisi keterisian posisi: PEG (bezetting) vs POG (formasi ideal), dipisah Struktural/Fungsional." },
 };
 
 interface EmployeeStatsChartProps {
@@ -133,7 +133,7 @@ export function EmployeeStatsChart({
         <BarChart data={data} layout="vertical" margin={{ top: 10, right: 48, left: 10, bottom: 0 }}>
           <XAxis type="number" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
           <YAxis type="category" dataKey="label" stroke="var(--foreground)" fontSize={11} tickLine={false} axisLine={false} width={180} />
-          <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={tooltipStyle} formatter={(value: any) => [`${value} posisi`, "Jumlah"]} />
+          <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={tooltipStyle} formatter={(value: any) => [`${value} karyawan`, "Jumlah"]} />
           <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Jumlah Posisi">
             {data.map((entry) => (
               <Cell key={entry.key} fill={entry.color} stroke="#e2e8f0" strokeWidth={entry.key === "eq" ? 1 : 0} />
@@ -176,7 +176,7 @@ export function EmployeeStatsChart({
             {chartConfig[chartType].title}
             {chartType === "pegpog" && totalKategori > 0 && (
               <span className="text-sm font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                {totalKategori} posisi
+                {totalKategori} karyawan
               </span>
             )}
           </CardTitle>

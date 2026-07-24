@@ -53,19 +53,21 @@ export function DashboardDemographics({
         }
       });
 
+      // Hitung jumlah KARYAWAN (bezetting), bukan jumlah posisi, sesuai label
+      // "Karyawan Fungsional/Struktural" pada spesifikasi.
       const counts = { gtF: 0, ltS: 0, gtS: 0, ltF: 0, eq: 0 };
       groups.forEach((g) => {
-        if (g.peg === g.pog) counts.eq++;
-        else if (g.peg > g.pog) g.struktural ? counts.gtS++ : counts.gtF++;
-        else g.struktural ? counts.ltS++ : counts.ltF++;
+        if (g.peg === g.pog) counts.eq += g.peg;
+        else if (g.peg > g.pog) g.struktural ? (counts.gtS += g.peg) : (counts.gtF += g.peg);
+        else g.struktural ? (counts.ltS += g.peg) : (counts.ltF += g.peg);
       });
 
       // Urutan & warna sesuai spesifikasi (gambar acuan)
       const cats = [
-        { key: "gtF", label: "PEG > POG (Fungsional)", count: counts.gtF, color: "#F5A623" },
-        { key: "ltS", label: "PEG < POG (Struktural)", count: counts.ltS, color: "#E53935" },
-        { key: "gtS", label: "PEG > POG (Struktural)", count: counts.gtS, color: "#FBD38D" },
-        { key: "ltF", label: "PEG < POG (Fungsional)", count: counts.ltF, color: "#FDE047" },
+        { key: "gtF", label: "PEG > POG (Karyawan Fungsional)", count: counts.gtF, color: "#F5A623" },
+        { key: "ltS", label: "PEG < POG (Karyawan Struktural)", count: counts.ltS, color: "#E53935" },
+        { key: "gtS", label: "PEG > POG (Karyawan Struktural)", count: counts.gtS, color: "#FBD38D" },
+        { key: "ltF", label: "PEG < POG (Karyawan Fungsional)", count: counts.ltF, color: "#FDE047" },
         { key: "eq", label: "PEG = POG", count: counts.eq, color: "#CBD5E1" },
       ];
 
