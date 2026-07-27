@@ -45,7 +45,9 @@ export function DashboardDemographics({
           cur = {
             pog: Number(r.formasiIdeal),
             peg: Number(r.bezetting ?? 0),
-            struktural: /manajemen/i.test(r.jenjangJabatan || ""),
+            // Struktural = posisi manajerial (Manager / Assistant Manager),
+            // selain itu Fungsional (Specialist/Officer/Technician).
+            struktural: /\b(manager|manajer)\b/i.test(r.jabatan || ""),
           };
           groups.push(cur);
         } else if (cur) {

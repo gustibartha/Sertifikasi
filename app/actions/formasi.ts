@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { employees } from "@/lib/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { formasiData, type FormasiRow } from "@/formasi-data";
 
 // Normalisasi istilah jabatan agar sinonim/singkatan cocok
@@ -52,14 +52,16 @@ const levelEquiv = (normEmp: string, baseLevel: string) => {
 
 export async function getFormasiWithActual() {
   try {
-    // Ambil jumlah pegawai organik per jabatan
+    // Ambil jumlah pegawai organik AKTIF per jabatan (mutasi/pensiun tidak dihitung
+    // sebagai bezetting, konsisten dengan kartu jumlah di dashboard).
+    const aktifCond = sql`(${employees.status_aktif} is null or lower(${employees.status_aktif}) = 'aktif')`;
     const actualCounts = await db
       .select({
         jabatan: employees.jabatan,
         count: sql<number>`count(*)`,
       })
       .from(employees)
-      .where(eq(employees.status_pegawai, "Organik"))
+      .where(and(eq(employees.status_pegawai, "Organik"), aktifCond))
       .groupBy(employees.jabatan);
 
     // Precompute metadata pencocokan untuk tiap baris formasi
