@@ -9,6 +9,10 @@ import { formasiData, type FormasiRow } from "@/formasi-data";
 const normalize = (str: string) => {
   return str
     .toUpperCase()
+    // Sinonim/singkatan direktori -> istilah formasi
+    .replace(/\bUP\b/g, "UNIT PEMBANGKITAN")
+    .replace(/\bLABORATORIUM\b/g, "LAB")
+    .replace(/\bHUMAS\b/g, "UMUM")
     .replace(/\bPEMELIHARAAN\b/g, "HAR")
     .replace(/\bASSISTANT MANAGER\b/g, "ASMAN")
     .replace(/\bASISTEN MANAJER\b/g, "ASMAN")
@@ -27,13 +31,23 @@ const normalize = (str: string) => {
     .trim();
 };
 
+// Kata kunci signifikan dari judul: buang penanda level, "&", dan CSR (opsional)
 const getKeywords = (str: string) => {
   return normalize(str)
-    .replace(/\b(HAR|PLTGU|PLTU|BLOK|UNIT|ASMAN|TEKNISI|OFR|JR|SR)\b/g, " ")
+    .replace(/&/g, " ")
+    .replace(/\b(HAR|PLTGU|PLTU|BLOK|UNIT|ASMAN|TEKNISI|OFR|JR|SR|CSR|KINERJA)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .split(" ")
     .filter((k) => k.length > 0);
+};
+
+// Level operasional Officer <-> Technician dianggap setara (direktori kerap
+// menyebut "Officer" untuk peran yang di formasi bernama "Technician").
+const levelEquiv = (normEmp: string, baseLevel: string) => {
+  if (baseLevel === "TEKNISI") return /\bOFR\b/.test(normEmp);
+  if (baseLevel === "OFR") return /\bTEKNISI\b/.test(normEmp);
+  return false;
 };
 
 export async function getFormasiWithActual() {
@@ -50,14 +64,15 @@ export async function getFormasiWithActual() {
 
     // Precompute metadata pencocokan untuk tiap baris formasi
     const rowMeta = formasiData.map((row) => {
-      const parts = row.jabatan.split("  ");
-      const level = parts[0].trim().toUpperCase();
-      const title = parts.length > 1 ? parts[1].trim().toUpperCase() : "";
+      const parts = row.jabatan.split("  ").filter((p) => p.trim() !== "");
+      const level = (parts[0] || "").trim().toUpperCase();
+      // Gabung sisa bagian sebagai judul (menangani spasi-ganda dobel di data)
+      const title = parts.length > 1 ? parts.slice(1).join(" ").trim().toUpperCase() : "";
       const normalizedLevel = normalize(level);
       const baseLevel = normalizedLevel.replace(/\b(JR|SR)\b/g, "").trim();
       return {
-        wantsJR: normalizedLevel.includes("JR"),
-        wantsSR: normalizedLevel.includes("SR"),
+        wantsJR: /\bJR\b/.test(normalizedLevel),
+        wantsSR: /\bSR\b/.test(normalizedLevel),
         baseLevel,
         title,
         normalizedTitle: normalize(title),
@@ -85,15 +100,15 @@ export async function getFormasiWithActual() {
       totalOrganik += cnt;
 
       const normalizedEmp = normalize(item.jabatan.trim().toUpperCase());
-      const isJR = normalizedEmp.includes("JR");
-      const isSR = normalizedEmp.includes("SR");
+      const isJR = /\bJR\b/.test(normalizedEmp);
+      const isSR = /\bSR\b/.test(normalizedEmp);
 
       let bestIdx = -1;
       let bestScore = 0;
 
       rowMeta.forEach((m, idx) => {
-        // 1. Level match (pisahkan JR / SR / reguler)
-        const baseLevelMatch = m.baseLevel !== "" && normalizedEmp.includes(m.baseLevel);
+        // 1. Level match (pisahkan JR / SR / reguler; Officer<->Technician setara)
+        const baseLevelMatch = m.baseLevel !== "" && (normalizedEmp.includes(m.baseLevel) || levelEquiv(normalizedEmp, m.baseLevel));
         const seniorityMatch = m.wantsJR === isJR && m.wantsSR === isSR;
         if (!baseLevelMatch || !seniorityMatch) return;
 
