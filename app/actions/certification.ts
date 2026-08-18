@@ -8,6 +8,39 @@ import { sendEmailNotification, sendWhatsAppNotification } from "@/lib/notificat
 
 export type CertificationInput = typeof certifications.$inferInsert;
 
+// Notifikasi: sertifikasi yang akan/sudah kadaluarsa (untuk lonceng header)
+export async function getExpiringCertifications() {
+  try {
+    const today = new Date();
+    const target = new Date();
+    target.setDate(today.getDate() + 30);
+    const targetStr = target.toISOString().split("T")[0];
+
+    const rows = await db
+      .select({
+        id: certifications.id,
+        name: employees.name,
+        pelatihan: certifications.nama_pelatihan,
+        exp: certifications.tanggal_kadaluarsa,
+      })
+      .from(certifications)
+      .innerJoin(employees, eq(certifications.employee_nid, employees.nid))
+      .where(lte(certifications.tanggal_kadaluarsa, targetStr))
+      .limit(15);
+
+    const data = rows
+      .map((r) => ({
+        ...r,
+        daysLeft: Math.ceil((new Date(r.exp).getTime() - today.getTime()) / 86400000),
+      }))
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+
+    return { success: true, data, count: data.length };
+  } catch (error: any) {
+    return { success: false, data: [], count: 0, error: error.message };
+  }
+}
+
 export async function getCertifications(statusPegawai?: "Organik" | "TAD") {
   try {
     const query = db.select({
