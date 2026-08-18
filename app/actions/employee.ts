@@ -31,7 +31,7 @@ export async function addEmployee(data: EmployeeInput) {
 
     await db.insert(employees).values(data);
     revalidatePath("/employees");
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {
     if (error.code === 'SQLITE_CONSTRAINT_PRIMARYKEY') {
@@ -45,7 +45,7 @@ export async function updateEmployee(nid: string, data: Partial<EmployeeInput>) 
   try {
     await db.update(employees).set(data).where(eq(employees.nid, nid));
     revalidatePath("/employees");
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -60,7 +60,7 @@ export async function deleteEmployee(nid: string) {
     await db.delete(employees).where(eq(employees.nid, nid));
     
     revalidatePath("/employees");
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -120,7 +120,7 @@ export async function importEmployeesCSV(rows: EmployeeInput[]) {
     }
 
     revalidatePath("/employees");
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     return { 
       success: true, 
       imported, 

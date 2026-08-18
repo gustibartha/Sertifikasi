@@ -36,7 +36,7 @@ export default function LoginPage() {
       }
 
       // Full page reload to pick up the new session cookie
-      window.location.href = "/";
+      window.location.href = "/dashboard";
     } catch (err) {
       setError("Terjadi kesalahan sistem. Silakan coba lagi.");
       setIsLoading(false);

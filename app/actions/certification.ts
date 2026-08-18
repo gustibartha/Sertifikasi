@@ -66,7 +66,7 @@ export async function addCertification(data: Omit<CertificationInput, "id">) {
 
     revalidatePath("/certifications");
     revalidatePath("/certifications-tad");
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -93,7 +93,7 @@ export async function updateCertification(id: string, data: Partial<Certificatio
     
     revalidatePath("/certifications");
     revalidatePath("/certifications-tad");
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -106,7 +106,7 @@ export async function deleteCertification(id: string) {
     
     revalidatePath("/certifications");
     revalidatePath("/certifications-tad");
-    revalidatePath("/");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

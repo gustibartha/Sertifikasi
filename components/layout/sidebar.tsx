@@ -1,15 +1,17 @@
 import Link from "next/link";
-import { 
-  LayoutDashboard, 
-  Users, 
+import {
+  LayoutDashboard,
+  Users,
   Award,
   UserCheck,
   ClipboardList,
-  Settings
+  Settings,
+  Activity
 } from "lucide-react";
 
 const mainNav = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Monitoring", href: "/monitoring", icon: Activity },
   { name: "Formasi Tenaga Kerja", href: "/formasi", icon: ClipboardList },
 ];
 
