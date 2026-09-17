@@ -41,7 +41,7 @@ const chartConfig: Record<ChartType, { title: string; description: string }> = {
   pendidikan: { title: "Distribusi Pendidikan", description: "Komposisi jenjang pendidikan terakhir pegawai." },
   jenjang: { title: "Distribusi Jenjang Jabatan", description: "Sebaran pegawai berdasarkan level jenjang jabatan." },
   grade: { title: "Distribusi Grade", description: "Sebaran pegawai berdasarkan Grade." },
-  pegpog: { title: "PEG vs POG (Keterisian Formasi)", description: "Jumlah karyawan menurut kondisi keterisian posisi: PEG (bezetting) vs POG (formasi ideal), dipisah Struktural/Fungsional." },
+  pegpog: { title: "PEG vs POG", description: "Jumlah karyawan menurut perbandingan Person Grade (PeG) dengan Position Grade (PoG), dipisah Struktural/Fungsional." },
 };
 
 interface EmployeeStatsChartProps {
@@ -51,7 +51,6 @@ interface EmployeeStatsChartProps {
   jenjangData: any[];
   gradeData: any[];
   pegVsPogData: any[];
-  pegVsPogMeta?: { unmatched: number; totalPosisi: number };
 }
 
 export function EmployeeStatsChart({
@@ -60,8 +59,7 @@ export function EmployeeStatsChart({
   educationData = [],
   jenjangData = [],
   gradeData = [],
-  pegVsPogData = [],
-  pegVsPogMeta = { unmatched: 0, totalPosisi: 0 }
+  pegVsPogData = []
 }: EmployeeStatsChartProps) {
   const [chartType, setChartType] = useState<ChartType>("umur");
 
@@ -181,8 +179,8 @@ export function EmployeeStatsChart({
             )}
           </CardTitle>
           <CardDescription>
-            {chartType === "pegpog" && pegVsPogMeta.unmatched > 0
-              ? `${chartConfig[chartType].description} • ${pegVsPogMeta.unmatched} pegawai belum terpetakan ke posisi.`
+            {chartType === "pegpog" && totalKategori === 0
+              ? "Data PeG/PoG belum tersedia — jalankan \"Sync Google Sheet\" di Direktori Organik."
               : chartConfig[chartType].description}
           </CardDescription>
         </div>

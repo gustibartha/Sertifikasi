@@ -41,6 +41,7 @@ function computeDemographics(list: any[], today: Date): DemographicStats {
   const eduMap: Record<string, number> = {};
   const jenjangMap: Record<string, number> = {};
   const gradeMap: Record<string, number> = {};
+  const pegCounts = { gtF: 0, ltS: 0, gtS: 0, ltF: 0, eq: 0 };
 
   list.forEach((emp) => {
     if (emp.tanggal_lahir) {
@@ -63,7 +64,27 @@ function computeDemographics(list: any[], today: Date): DemographicStats {
 
     const grade = emp.grade || "N/A";
     gradeMap[grade] = (gradeMap[grade] || 0) + 1;
+
+    // PEG vs POG: Person Grade (PeG) dibanding Position Grade (PoG) per karyawan.
+    // Struktural = jenjang SPV/MD/MM…, Fungsional = jenjang F… (dari Google Sheet)
+    const peg = emp.person_grade;
+    const pog = emp.pog;
+    if (peg != null && pog != null) {
+      const jj = (emp.jenjang || "").toString().toUpperCase().trim();
+      const fungsional = /^F/.test(jj);
+      if (peg === pog) pegCounts.eq++;
+      else if (peg > pog) fungsional ? pegCounts.gtF++ : pegCounts.gtS++;
+      else fungsional ? pegCounts.ltF++ : pegCounts.ltS++;
+    }
   });
+
+  const pegVsPogData = [
+    { key: "gtF", label: "PEG > POG (Karyawan Fungsional)", count: pegCounts.gtF, color: "#F5A623" },
+    { key: "ltS", label: "PEG < POG (Karyawan Struktural)", count: pegCounts.ltS, color: "#E53935" },
+    { key: "gtS", label: "PEG > POG (Karyawan Struktural)", count: pegCounts.gtS, color: "#FBD38D" },
+    { key: "ltF", label: "PEG < POG (Karyawan Fungsional)", count: pegCounts.ltF, color: "#FDE047" },
+    { key: "eq", label: "PEG = POG", count: pegCounts.eq, color: "#CBD5E1" },
+  ];
 
   return {
     ageData: ageStats,
@@ -71,7 +92,7 @@ function computeDemographics(list: any[], today: Date): DemographicStats {
     educationData: Object.entries(eduMap).map(([name, value]) => ({ name, value })),
     jenjangData: Object.entries(jenjangMap).map(([name, total]) => ({ name, total })),
     gradeData: Object.entries(gradeMap).map(([name, total]) => ({ name, total })),
-    pegVsPogData: [],
+    pegVsPogData,
     total: list.length,
   };
 }

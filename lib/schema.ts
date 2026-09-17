@@ -11,6 +11,8 @@ export const employees = pgTable('employees', {
   sub_bidang: text('sub_bidang'),
   grade: text('grade'),
   jenjang_jabatan: text('jenjang_jabatan'),
+  jenjang: text('jenjang'), // F3/F5 (Fungsional) | SPV A/MD/MM (Struktural) — dari Google Sheet
+  person_grade: integer('person_grade'), // PeG — grade orang (pasangan dari pog / Position Grade)
   tanggal_jabatan: text('tanggal_jabatan'),
   tanggal_lahir: text('tanggal_lahir'), // Disimpan sebagai YYYY-MM-DD
   tanggal_pensiun: text('tanggal_pensiun'),

@@ -28,7 +28,9 @@ import {
   FileDown,
   Calendar,
   Filter,
-  RotateCcw
+  RotateCcw,
+  RefreshCw,
+  ExternalLink
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,6 +58,7 @@ import {
 } from "@/components/ui/select";
 import * as XLSX from "xlsx";
 import { addEmployee, updateEmployee, deleteEmployee, importEmployeesCSV, EmployeeInput } from "@/app/actions/employee";
+import { syncOrganikFromSheet } from "@/app/actions/sheet-sync";
 import { normalizePendidikan } from "@/lib/utils";
 
 // Helper to convert Excel Serial Date to YYYY-MM-DD
@@ -126,6 +129,8 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
   const [editErrorMsg, setEditErrorMsg] = useState("");
   const [editData, setEditData] = useState<EmployeeInput | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -176,6 +181,14 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template Organik");
     XLSX.writeFile(wb, "Template_Import_Organik_V2.xlsx");
+  };
+
+  const handleSyncSheet = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+    const res = await syncOrganikFromSheet();
+    setSyncResult(res);
+    setIsSyncing(false);
   };
 
   const handleExportExcel = () => {
@@ -417,6 +430,17 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
           <p className="text-slate-500 mt-1">Kelola data demografi dan informasi pegawai Organik PLN NP.</p>
         </div>
         <div className="flex gap-2">
+          {/* Sync Google Sheet */}
+          <Button
+            variant="outline"
+            onClick={handleSyncSheet}
+            disabled={isSyncing}
+            className="flex items-center gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-all"
+          >
+            {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {isSyncing ? "Menyinkron..." : "Sync Google Sheet"}
+          </Button>
+
           {/* Export Excel */}
           <Button variant="outline" onClick={handleExportExcel} className="flex items-center gap-2 border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all">
             <Download className="h-4 w-4" />
@@ -633,6 +657,54 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
           </Dialog>
         </div>
       </div>
+
+      {syncResult && (
+        <div
+          className={`rounded-xl border p-4 shadow-sm ${
+            syncResult.success ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {syncResult.success ? (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+            )}
+            <div className="flex-1 text-sm">
+              <p className={`font-semibold ${syncResult.success ? "text-emerald-800" : "text-red-800"}`}>
+                {syncResult.success ? syncResult.message : syncResult.error}
+              </p>
+              {syncResult.success && syncResult.totalTidakAdaDiSheet > 0 && (
+                <p className="mt-1 text-amber-700">
+                  {syncResult.totalTidakAdaDiSheet} pegawai di database tidak ada di sheet (tidak dihapus):{" "}
+                  <span className="text-xs">
+                    {syncResult.tidakAdaDiSheet.map((e: any) => e.name).join(", ")}
+                    {syncResult.totalTidakAdaDiSheet > 20 ? ", …" : ""}
+                  </span>
+                </p>
+              )}
+              {syncResult.errors?.length > 0 && (
+                <ul className="mt-1 list-inside list-disc text-xs text-red-700">
+                  {syncResult.errors.map((er: string, i: number) => (
+                    <li key={i}>{er}</li>
+                  ))}
+                </ul>
+              )}
+              {syncResult.success && (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 text-xs font-semibold text-blue-600 underline"
+                >
+                  Muat ulang untuk melihat data terbaru
+                </button>
+              )}
+            </div>
+            <button onClick={() => setSyncResult(null)} className="text-slate-400 hover:text-slate-600">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white p-4 rounded-xl shadow-sm border">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-4">

@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { EmployeeStatsChart } from "@/components/charts/employee-stats-chart";
 import { Users, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getFormasiWithActual } from "@/app/actions/formasi";
 
 export interface DemographicStats {
   ageData: any[];
@@ -26,63 +25,7 @@ export function DashboardDemographics({
   tad: DemographicStats;
 }) {
   const [group, setGroup] = useState<Group>("Organik");
-  const [pegVsPog, setPegVsPog] = useState<any[]>([]);
-  const [pegVsPogMeta, setPegVsPogMeta] = useState<{ unmatched: number; totalPosisi: number }>({ unmatched: 0, totalPosisi: 0 });
-
-  // Muat data PEG vs POG (Bezetting vs Formasi Ideal) client-side agar dashboard SSR
-  // tetap cepat (pencocokan formasi cukup berat). Dikategorikan per posisi:
-  // PEG>POG / PEG<POG / PEG=POG, dipecah Struktural vs Fungsional (dari jenjang jabatan).
-  useEffect(() => {
-    let cancelled = false;
-    getFormasiWithActual().then((res) => {
-      if (cancelled || !res.success || !res.data) return;
-
-      // Bentuk grup posisi: baris ber-formasiIdeal jadi header, baris null menempel ke atasnya
-      const groups: { pog: number; peg: number; struktural: boolean }[] = [];
-      let cur: { pog: number; peg: number; struktural: boolean } | null = null;
-      res.data.forEach((r) => {
-        if (r.formasiIdeal !== null) {
-          cur = {
-            pog: Number(r.formasiIdeal),
-            peg: Number(r.bezetting ?? 0),
-            // Struktural = posisi manajerial (Manager / Assistant Manager),
-            // selain itu Fungsional (Specialist/Officer/Technician).
-            struktural: /\b(manager|manajer)\b/i.test(r.jabatan || ""),
-          };
-          groups.push(cur);
-        } else if (cur) {
-          cur.peg += Number(r.bezetting ?? 0);
-        }
-      });
-
-      // Hitung jumlah KARYAWAN (bezetting), bukan jumlah posisi, sesuai label
-      // "Karyawan Fungsional/Struktural" pada spesifikasi.
-      const counts = { gtF: 0, ltS: 0, gtS: 0, ltF: 0, eq: 0 };
-      groups.forEach((g) => {
-        if (g.peg === g.pog) counts.eq += g.peg;
-        else if (g.peg > g.pog) g.struktural ? (counts.gtS += g.peg) : (counts.gtF += g.peg);
-        else g.struktural ? (counts.ltS += g.peg) : (counts.ltF += g.peg);
-      });
-
-      // Urutan & warna sesuai spesifikasi (gambar acuan)
-      const cats = [
-        { key: "gtF", label: "PEG > POG (Karyawan Fungsional)", count: counts.gtF, color: "#F5A623" },
-        { key: "ltS", label: "PEG < POG (Karyawan Struktural)", count: counts.ltS, color: "#E53935" },
-        { key: "gtS", label: "PEG > POG (Karyawan Struktural)", count: counts.gtS, color: "#FBD38D" },
-        { key: "ltF", label: "PEG < POG (Karyawan Fungsional)", count: counts.ltF, color: "#FDE047" },
-        { key: "eq", label: "PEG = POG", count: counts.eq, color: "#CBD5E1" },
-      ];
-
-      setPegVsPog(cats);
-      setPegVsPogMeta({ unmatched: res.unmatched ?? 0, totalPosisi: groups.length });
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  // PEG vs POG (formasi) hanya relevan untuk Organik
-  const active = group === "Organik"
-    ? { ...organik, pegVsPogData: pegVsPog, pegVsPogMeta }
-    : { ...tad, pegVsPogData: [], pegVsPogMeta: { unmatched: 0, totalPosisi: 0 } };
+  const active = group === "Organik" ? organik : tad;
 
   const tabBase =
     "flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-lg transition-all";
@@ -126,7 +69,6 @@ export function DashboardDemographics({
         jenjangData={active.jenjangData}
         gradeData={active.gradeData}
         pegVsPogData={active.pegVsPogData}
-        pegVsPogMeta={active.pegVsPogMeta}
       />
     </div>
   );
