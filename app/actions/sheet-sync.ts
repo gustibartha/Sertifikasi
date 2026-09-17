@@ -107,6 +107,14 @@ export async function syncOrganikFromSheet() {
       const nama = bersih(r[COL.namaTanpaGelar]) || bersih(r[COL.nama]);
       if (!nid || !nama) continue; // lewati baris header lanjutan / kosong
 
+      // NO. INDUK yang sah selalu gabungan angka+huruf (mis. 9419142ZJY, 7092133K3).
+      // Blok legenda/rekap di bawah sheet memakai angka polos ("1", "183") pada kolom
+      // ini — baris seperti itu harus dilewati agar tidak masuk sebagai pegawai.
+      if (nid.length < 6 || !/[A-Za-z]/.test(nid)) continue;
+
+      // Baris rekap juga memakai teks kategori sebagai "nama"
+      if (/^PEG\s*[<>=]/i.test(nama)) continue;
+
       try {
         const jk = bersih(r[COL.jenisKelamin]).toUpperCase().startsWith("P") ? "P" : "L";
         const data = {
