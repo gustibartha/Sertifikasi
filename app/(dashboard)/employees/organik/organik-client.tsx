@@ -629,7 +629,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                       <Label htmlFor="status_aktif">Status Karyawan <span className="text-red-500">*</span></Label>
                       <Select required value={formData.status_aktif || ""} onValueChange={v => handleInputChange('status_aktif', v)}>
                         <SelectTrigger id="status_aktif"><SelectValue placeholder="Pilih status" /></SelectTrigger>
-                        <SelectContent><SelectItem value="aktif">Aktif</SelectItem><SelectItem value="mutasi">Mutasi</SelectItem><SelectItem value="pensiun">Pensiun</SelectItem></SelectContent>
+                        <SelectContent><SelectItem value="aktif">Aktif</SelectItem><SelectItem value="mutasi">Mutasi</SelectItem><SelectItem value="pensiun">Pensiun</SelectItem><SelectItem value="ojt">OJT</SelectItem></SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
@@ -958,7 +958,7 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
                     <Label htmlFor="edit_status_aktif">Status Karyawan</Label>
                     <Select value={editData.status_aktif || ""} onValueChange={v => v && handleEditChange('status_aktif', v)}>
                       <SelectTrigger id="edit_status_aktif"><SelectValue placeholder="Pilih status" /></SelectTrigger>
-                      <SelectContent className="bg-white"><SelectItem value="aktif">Aktif</SelectItem><SelectItem value="mutasi">Mutasi</SelectItem><SelectItem value="pensiun">Pensiun</SelectItem></SelectContent>
+                      <SelectContent className="bg-white"><SelectItem value="aktif">Aktif</SelectItem><SelectItem value="mutasi">Mutasi</SelectItem><SelectItem value="pensiun">Pensiun</SelectItem><SelectItem value="ojt">OJT</SelectItem></SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
