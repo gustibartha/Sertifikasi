@@ -707,10 +707,26 @@ export function OrganikClient({ initialData }: { initialData: any[] }) {
       )}
 
       <div className="bg-white p-4 rounded-xl shadow-sm border">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-4">
-          <div className="relative flex-1 lg:max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-            <Input placeholder="Cari nama atau NID..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-col gap-3 mb-4">
+          {/* Baris pencarian — lebar penuh agar tidak terdesak oleh filter */}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Cari nama atau NID..."
+              className="h-10 w-full pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                aria-label="Bersihkan pencarian"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
