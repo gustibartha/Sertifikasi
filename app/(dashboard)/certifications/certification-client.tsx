@@ -19,7 +19,11 @@ import {
   FileText,
   Edit,
   Trash2,
-  Loader2
+  Loader2,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  X
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,6 +50,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { addCertification, deleteCertification, updateCertification } from "@/app/actions/certification";
+import { syncSertifikasiFromSheet } from "@/app/actions/cert-sheet-sync";
 
 export function CertificationClient({ 
   initialData, 
@@ -62,6 +67,16 @@ export function CertificationClient({
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+
+  const handleSyncSheet = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+    const res = await syncSertifikasiFromSheet();
+    setSyncResult(res);
+    setIsSyncing(false);
+  };
 
   const [formData, setFormData] = useState({
     employee_nid: "",
@@ -158,6 +173,18 @@ export function CertificationClient({
           <p className="text-muted-foreground mt-1">Pantau riwayat pelatihan dan masa berlaku sertifikasi karyawan {type.toLowerCase()}.</p>
         </div>
         <div className="flex gap-2">
+          {type === "Organik" && (
+            <Button
+              variant="outline"
+              onClick={handleSyncSheet}
+              disabled={isSyncing}
+              className="flex items-center gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-all"
+            >
+              {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {isSyncing ? "Menyinkron..." : "Sync Google Sheet"}
+            </Button>
+          )}
+
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger>
               <Button className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5">
@@ -237,6 +264,55 @@ export function CertificationClient({
           </Dialog>
         </div>
       </div>
+
+      {syncResult && (
+        <div
+          className={`rounded-xl border p-4 shadow-sm ${
+            syncResult.success ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {syncResult.success ? (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+            )}
+            <div className="flex-1 text-sm">
+              <p className={`font-semibold ${syncResult.success ? "text-emerald-800" : "text-red-800"}`}>
+                {syncResult.success ? syncResult.message : syncResult.error}
+              </p>
+              {syncResult.success && syncResult.totalNidTidakDikenal > 0 && (
+                <p className="mt-1 text-amber-700">
+                  {syncResult.totalNidTidakDikenal} NID di sheet tidak ditemukan di Direktori Organik, jadi
+                  sertifikasinya dilewati:{" "}
+                  <span className="text-xs">
+                    {syncResult.nidTidakDikenal.join(", ")}
+                    {syncResult.totalNidTidakDikenal > 20 ? ", …" : ""}
+                  </span>
+                </p>
+              )}
+              {syncResult.errors?.length > 0 && (
+                <ul className="mt-1 list-inside list-disc text-xs text-red-700">
+                  {syncResult.errors.map((er: string, i: number) => (
+                    <li key={i}>{er}</li>
+                  ))}
+                </ul>
+              )}
+              {syncResult.success && (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 text-xs font-semibold text-blue-600 underline"
+                >
+                  Muat ulang untuk melihat data terbaru
+                </button>
+              )}
+            </div>
+            <button onClick={() => setSyncResult(null)} className="text-slate-400 hover:text-slate-600">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white p-4 rounded-xl shadow-sm border">
         <div className="flex items-center gap-4 mb-4">

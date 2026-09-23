@@ -33,10 +33,17 @@ export function getSheetId() {
   return id;
 }
 
+/** ID spreadsheet monitoring sertifikasi. */
+export function getCertSheetId() {
+  const id = process.env.GOOGLE_SHEET_CERT_ID;
+  if (!id) throw new Error("GOOGLE_SHEET_CERT_ID belum diatur di environment.");
+  return id;
+}
+
 /** Ambil nilai sel apa adanya (sesuai tampilan di sheet). */
-export async function fetchSheetValues(range: string): Promise<string[][]> {
+export async function fetchSheetValues(range: string, sheetId?: string): Promise<string[][]> {
   const auth = getSheetsAuth();
-  const spreadsheetId = getSheetId();
+  const spreadsheetId = sheetId ?? getSheetId();
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}` +
     `?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`;
