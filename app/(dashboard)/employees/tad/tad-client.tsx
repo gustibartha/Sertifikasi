@@ -24,7 +24,8 @@ import {
   X,
   FileDown,
   Filter,
-  RotateCcw
+  RotateCcw,
+  Download
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -112,6 +113,34 @@ export function TadClient({ initialData }: { initialData: any[] }) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template TAD");
     XLSX.writeFile(wb, "Template_Import_TAD.xlsx");
+  };
+
+  const handleExportExcel = () => {
+    const rows = filteredData.map((emp) => ({
+      NID: emp.nid,
+      Nama: emp.name,
+      "Perusahaan Asal (Vendor)": emp.perusahaan_asal || "",
+      Jabatan: emp.jabatan || "",
+      Bidang: emp.bidang || "",
+      "Sub Bidang": emp.sub_bidang || "",
+      "Jenis Kelamin": emp.jenis_kelamin || "",
+      "Tanggal Lahir": emp.tanggal_lahir || "",
+      Pendidikan: emp.pendidikan || "",
+      Status: emp.status_aktif || "aktif",
+      Email: emp.email || "",
+      WhatsApp: emp.phone || "",
+      Keterangan: emp.keterangan || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [
+      { wch: 14 }, { wch: 28 }, { wch: 24 }, { wch: 28 }, { wch: 18 },
+      { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 20 }, { wch: 10 },
+      { wch: 24 }, { wch: 16 }, { wch: 20 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data TAD");
+    const tanggal = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(wb, `Data_Pegawai_TAD_${tanggal}.xlsx`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -240,6 +269,16 @@ export function TadClient({ initialData }: { initialData: any[] }) {
           <p className="text-slate-500 mt-1">Kelola data informasi pegawai TAD.</p>
         </div>
         <div className="flex gap-2">
+          {/* Export Excel */}
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all"
+          >
+            <Download className="h-4 w-4" />
+            Export Excel
+          </Button>
+
           {/* Import Excel Dialog */}
           <Dialog open={isImportOpen} onOpenChange={(open) => { if (!open) handleCloseImport(); else setIsImportOpen(true); }}>
             <DialogTrigger render={<Button variant="outline" className="flex items-center gap-2 border-slate-300 hover:bg-slate-50 transition-all" />}>
