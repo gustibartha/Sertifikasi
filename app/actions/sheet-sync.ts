@@ -4,7 +4,38 @@ import { db } from "@/lib/db";
 import { employees } from "@/lib/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { fetchSheetValues } from "@/lib/google-sheets";
+import { fetchSheetValues, getSheetId, listSheetTabs, quoteTab } from "@/lib/google-sheets";
+
+/** Apakah baris ini header tabel direktori pegawai? */
+function isHeaderDirektori(row: string[] | undefined) {
+  const joined = (row || []).map((c) => (c || "").toUpperCase()).join("|");
+  return joined.includes("NO. INDUK");
+}
+
+/**
+ * Cari tab yang memuat tabel direktori pegawai. Bisa dipaksa lewat
+ * GOOGLE_SHEET_DIR_TAB; kalau tidak, semua tab ditelusuri.
+ */
+async function findDirektoriRange(spreadsheetId: string): Promise<{ range: string; tab: string }> {
+  const tabs = await listSheetTabs(spreadsheetId);
+  if (tabs.length === 0) throw new Error("Spreadsheet tidak punya tab yang bisa dibaca.");
+
+  const namaTab = process.env.GOOGLE_SHEET_DIR_TAB;
+  let kandidat = namaTab ? tabs.filter((t) => t.title === namaTab) : tabs;
+  if (kandidat.length === 0) kandidat = tabs;
+
+  for (const t of kandidat) {
+    const probe = await fetchSheetValues(`${quoteTab(t.title)}!A1:AE15`, spreadsheetId);
+    if (probe.some(isHeaderDirektori)) {
+      return { range: `${quoteTab(t.title)}!A1:AE2000`, tab: t.title };
+    }
+  }
+
+  throw new Error(
+    `Tidak menemukan tabel direktori pegawai. Tab yang diperiksa: ${tabs.map((t) => t.title).join(", ")}. ` +
+      `Pastikan ada baris header berisi "NO. INDUK".`
+  );
+}
 
 /** Posisi kolom pada sheet "Keadaan Karyawan" (0-based). */
 const COL = {
@@ -69,16 +100,17 @@ const bersih = (v?: string) => {
 export async function syncOrganikFromSheet() {
   try {
     // Kolom A..AE cukup untuk semua field yang dipakai
-    const rows = await fetchSheetValues("A1:AE2000");
+    const spreadsheetId = getSheetId();
+    const { range, tab } = await findDirektoriRange(spreadsheetId);
+    const rows = await fetchSheetValues(range, spreadsheetId);
     if (rows.length === 0) {
-      return { success: false, error: "Sheet kosong atau tidak bisa dibaca." };
+      return { success: false, error: `Tab "${tab}" kosong atau tidak bisa dibaca.` };
     }
 
     // Cari baris header yang memuat "NO. INDUK", lalu validasi posisi kolom kunci
     let headerIdx = -1;
     for (let i = 0; i < Math.min(rows.length, 10); i++) {
-      const joined = (rows[i] || []).map((c) => (c || "").toUpperCase()).join("|");
-      if (joined.includes("NO. INDUK")) {
+      if (isHeaderDirektori(rows[i])) {
         headerIdx = i;
         break;
       }
@@ -194,7 +226,8 @@ export async function syncOrganikFromSheet() {
       errors,
       tidakAdaDiSheet: tidakAdaDiSheet.slice(0, 20),
       totalTidakAdaDiSheet: tidakAdaDiSheet.length,
-      message: `Berhasil sinkron ${imported} pegawai dari Google Sheet${skipped > 0 ? `, ${skipped} dilewati` : ""}.`,
+      tab,
+      message: `Berhasil sinkron ${imported} pegawai dari tab "${tab}"${skipped > 0 ? `, ${skipped} dilewati` : ""}.`,
     };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal sinkron dari Google Sheet." };
