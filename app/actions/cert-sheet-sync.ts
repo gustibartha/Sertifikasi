@@ -5,8 +5,47 @@ import { db } from "@/lib/db";
 import { certifications, employees } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { fetchSheetValues, getCertSheetId } from "@/lib/google-sheets";
+import { fetchSheetValues, getCertSheetId, listSheetTabs, quoteTab } from "@/lib/google-sheets";
 import { bersih, parseAngka, parseTanggal } from "@/lib/sheet-parse";
+
+/** Apakah baris ini header tabel sertifikasi? */
+function isHeaderSertifikasi(row: string[] | undefined) {
+  const joined = (row || []).map((c) => (c || "").toUpperCase()).join("|");
+  return joined.includes("JUDUL SERTIFIKASI") && joined.includes("NID");
+}
+
+/**
+ * Cari tab yang memuat tabel sertifikasi. Urutan:
+ *  1. GOOGLE_SHEET_CERT_TAB (nama tab, kalau diset)
+ *  2. GOOGLE_SHEET_CERT_GID (gid tab, kalau diset)
+ *  3. Telusuri semua tab, ambil yang headernya memuat "JUDUL SERTIFIKASI"
+ */
+async function findCertRange(spreadsheetId: string): Promise<{ range: string; tab: string }> {
+  const tabs = await listSheetTabs(spreadsheetId);
+  if (tabs.length === 0) throw new Error("Spreadsheet tidak punya tab yang bisa dibaca.");
+
+  const namaTab = process.env.GOOGLE_SHEET_CERT_TAB;
+  const gidTab = process.env.GOOGLE_SHEET_CERT_GID;
+
+  let kandidat = tabs;
+  if (namaTab) kandidat = tabs.filter((t) => t.title === namaTab);
+  else if (gidTab) kandidat = tabs.filter((t) => String(t.gid) === String(gidTab));
+
+  // Kalau penyetelan env tidak cocok, tetap telusuri semua tab
+  if (kandidat.length === 0) kandidat = tabs;
+
+  for (const t of kandidat) {
+    const probe = await fetchSheetValues(`${quoteTab(t.title)}!A1:X15`, spreadsheetId);
+    if (probe.some(isHeaderSertifikasi)) {
+      return { range: `${quoteTab(t.title)}!A1:X5000`, tab: t.title };
+    }
+  }
+
+  throw new Error(
+    `Tidak menemukan tabel sertifikasi. Tab yang diperiksa: ${tabs.map((t) => t.title).join(", ")}. ` +
+      `Pastikan ada baris header berisi "JUDUL SERTIFIKASI" dan "NID".`
+  );
+}
 
 /** Posisi kolom pada sheet "Monitoring Sertifikasi" (0-based). */
 const COL = {
@@ -36,16 +75,17 @@ function buildId(nid: string, judul: string, noSert: string, tglTerbit: string |
 
 export async function syncSertifikasiFromSheet() {
   try {
-    const rows = await fetchSheetValues("A1:X5000", getCertSheetId());
+    const spreadsheetId = getCertSheetId();
+    const { range, tab } = await findCertRange(spreadsheetId);
+    const rows = await fetchSheetValues(range, spreadsheetId);
     if (rows.length === 0) {
-      return { success: false, error: "Sheet kosong atau tidak bisa dibaca." };
+      return { success: false, error: `Tab "${tab}" kosong atau tidak bisa dibaca.` };
     }
 
     // Cari baris header (memuat "JUDUL SERTIFIKASI")
     let headerIdx = -1;
     for (let i = 0; i < Math.min(rows.length, 15); i++) {
-      const joined = (rows[i] || []).map((c) => (c || "").toUpperCase()).join("|");
-      if (joined.includes("JUDUL SERTIFIKASI") && joined.includes("NID")) {
+      if (isHeaderSertifikasi(rows[i])) {
         headerIdx = i;
         break;
       }
@@ -159,7 +199,8 @@ export async function syncSertifikasiFromSheet() {
       errors,
       nidTidakDikenal: daftarNidTidakDikenal,
       totalNidTidakDikenal: nidTidakDikenal.size,
-      message: `Berhasil sinkron ${imported} sertifikasi dari Google Sheet${skipped > 0 ? `, ${skipped} dilewati` : ""}.`,
+      tab,
+      message: `Berhasil sinkron ${imported} sertifikasi dari tab "${tab}"${skipped > 0 ? `, ${skipped} dilewati` : ""}.`,
     };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal sinkron sertifikasi dari Google Sheet." };

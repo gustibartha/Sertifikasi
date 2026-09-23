@@ -33,11 +33,32 @@ export function getSheetId() {
   return id;
 }
 
-/** ID spreadsheet monitoring sertifikasi. */
+/**
+ * ID spreadsheet sertifikasi. Jika GOOGLE_SHEET_CERT_ID tidak diset, memakai
+ * spreadsheet yang sama dengan direktori (data sertifikasi digabung sebagai tab).
+ */
 export function getCertSheetId() {
-  const id = process.env.GOOGLE_SHEET_CERT_ID;
-  if (!id) throw new Error("GOOGLE_SHEET_CERT_ID belum diatur di environment.");
-  return id;
+  return process.env.GOOGLE_SHEET_CERT_ID || getSheetId();
+}
+
+/** Daftar tab (worksheet) beserta gid-nya. */
+export async function listSheetTabs(
+  spreadsheetId: string
+): Promise<{ title: string; gid: number }[]> {
+  const auth = getSheetsAuth();
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}` +
+    `?fields=sheets.properties.title,sheets.properties.sheetId`;
+  const res = await auth.request<{ sheets?: { properties: { title: string; sheetId: number } }[] }>({ url });
+  return (res.data?.sheets ?? []).map((s) => ({
+    title: s.properties.title,
+    gid: s.properties.sheetId,
+  }));
+}
+
+/** Bungkus judul tab agar aman dipakai di range A1 notation. */
+export function quoteTab(title: string) {
+  return `'${title.replace(/'/g, "''")}'`;
 }
 
 /** Ambil nilai sel apa adanya (sesuai tampilan di sheet). */
