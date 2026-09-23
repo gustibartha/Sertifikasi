@@ -23,7 +23,9 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
-  X
+  X,
+  Filter,
+  RotateCcw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -69,6 +71,9 @@ export function CertificationClient({
   const [errorMsg, setErrorMsg] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterLembaga, setFilterLembaga] = useState("all");
+  const [filterEksekusi, setFilterEksekusi] = useState("all");
 
   const handleSyncSheet = async () => {
     setIsSyncing(true);
@@ -140,29 +145,63 @@ export function CertificationClient({
     await updateCertification(id, { status_eksekusi: status });
   };
 
-  const filteredData = initialData.filter(cert => 
-    cert.employeeName.toLowerCase().includes(search.toLowerCase()) || 
-    cert.nama_pelatihan.toLowerCase().includes(search.toLowerCase()) ||
-    cert.no_sertifikat?.toLowerCase().includes(search.toLowerCase())
-  );
+  const uniqueLembaga = Array.from(
+    new Set(initialData.map((c) => c.lembaga).filter(Boolean))
+  ).sort() as string[];
 
-  const getStatusBadge = (expiryDate: string) => {
-    const today = new Date();
-    const expiry = new Date(expiryDate);
-    const diffTime = expiry.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const activeFilterCount = [filterStatus, filterLembaga, filterEksekusi].filter((v) => v !== "all").length;
 
-    if (diffDays < 0) return <Badge variant="destructive">Kadaluwarsa</Badge>;
-    if (diffDays <= 30) return <Badge className="bg-red-500 hover:bg-red-600">Kritis (H-{diffDays})</Badge>;
-    if (diffDays <= 90) return <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Segera Habis</Badge>;
+  const resetFilters = () => {
+    setSearch("");
+    setFilterStatus("all");
+    setFilterLembaga("all");
+    setFilterEksekusi("all");
+  };
+
+  const filteredData = initialData.filter((cert) => {
+    const q = search.toLowerCase();
+    const matchSearch =
+      !q ||
+      cert.employeeName?.toLowerCase().includes(q) ||
+      cert.nama_pelatihan?.toLowerCase().includes(q) ||
+      cert.no_sertifikat?.toLowerCase().includes(q) ||
+      cert.lembaga?.toLowerCase().includes(q);
+    const matchStatus = filterStatus === "all" || getStatusKey(cert.tanggal_kadaluarsa) === filterStatus;
+    const matchLembaga = filterLembaga === "all" || cert.lembaga === filterLembaga;
+    const matchEksekusi =
+      filterEksekusi === "all" ||
+      (filterEksekusi === "Dieksekusi" ? cert.status_eksekusi === "Dieksekusi" : cert.status_eksekusi !== "Dieksekusi");
+    return matchSearch && matchStatus && matchLembaga && matchEksekusi;
+  });
+
+  /** Kategori status; null bila sertifikat tidak punya tanggal berakhir. */
+  const getStatusKey = (expiryDate?: string | null) => {
+    const d = calculateDaysLeft(expiryDate);
+    if (d === null) return "tanpa";
+    if (d < 0) return "kadaluwarsa";
+    if (d <= 30) return "kritis";
+    if (d <= 90) return "segera";
+    return "aktif";
+  };
+
+  const getStatusBadge = (expiryDate?: string | null) => {
+    const key = getStatusKey(expiryDate);
+    const d = calculateDaysLeft(expiryDate);
+    if (key === "tanpa")
+      return <Badge variant="outline" className="text-slate-500 border-slate-300">Tanpa Masa Berlaku</Badge>;
+    if (key === "kadaluwarsa") return <Badge variant="destructive">Kadaluwarsa</Badge>;
+    if (key === "kritis") return <Badge className="bg-red-500 hover:bg-red-600">Kritis (H-{d})</Badge>;
+    if (key === "segera")
+      return <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Segera Habis</Badge>;
     return <Badge className="bg-emerald-500 hover:bg-emerald-600">Aktif</Badge>;
   };
 
-  const calculateDaysLeft = (expiryDate: string) => {
-    const today = new Date();
+  /** Sisa hari; null bila tanggal berakhir kosong/tidak valid. */
+  const calculateDaysLeft = (expiryDate?: string | null) => {
+    if (!expiryDate) return null;
     const expiry = new Date(expiryDate);
-    const diffTime = expiry.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (isNaN(expiry.getTime())) return null;
+    return Math.ceil((expiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
   };
 
   return (
@@ -315,16 +354,85 @@ export function CertificationClient({
       )}
 
       <div className="bg-white p-4 rounded-xl shadow-sm border">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+        <div className="flex flex-col gap-3 mb-4">
+          {/* Pencarian — lebar penuh agar tidak terdesak filter */}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Cari sertifikasi atau nama..."
-              className="pl-8"
+              placeholder="Cari nama pegawai, judul sertifikasi, no. sertifikat, atau lembaga..."
+              className="h-10 w-full pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                aria-label="Bersihkan pencarian"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 pr-1 text-sm font-medium text-slate-500">
+              <Filter className="h-4 w-4" /> Filter:
+            </div>
+
+            <Select value={filterStatus} onValueChange={(v) => v && setFilterStatus(v)}>
+              <SelectTrigger className="h-9 w-[190px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="aktif">Aktif</SelectItem>
+                <SelectItem value="segera">Segera Habis (≤90 hari)</SelectItem>
+                <SelectItem value="kritis">Kritis (≤30 hari)</SelectItem>
+                <SelectItem value="kadaluwarsa">Kadaluwarsa</SelectItem>
+                <SelectItem value="tanpa">Tanpa Masa Berlaku</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterLembaga} onValueChange={(v) => v && setFilterLembaga(v)}>
+              <SelectTrigger className="h-9 w-[220px]"><SelectValue placeholder="Lembaga" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Lembaga</SelectItem>
+                {uniqueLembaga.map((l) => (
+                  <SelectItem key={l} value={l}>{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterEksekusi} onValueChange={(v) => v && setFilterEksekusi(v)}>
+              <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Eksekusi" /></SelectTrigger>
+              <SelectContent className="bg-white max-h-[300px]">
+                <SelectItem value="all">Semua Eksekusi</SelectItem>
+                <SelectItem value="Dieksekusi">Dieksekusi</SelectItem>
+                <SelectItem value="Hold">Hold</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(activeFilterCount > 0 || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                className="flex h-9 items-center gap-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-3 flex items-center justify-between text-sm text-slate-500">
+          <span>
+            Menampilkan <span className="font-bold text-slate-700">{filteredData.length}</span> dari{" "}
+            {initialData.length} sertifikasi
+          </span>
+          {activeFilterCount > 0 && (
+            <span className="font-medium text-blue-600">{activeFilterCount} filter aktif</span>
+          )}
         </div>
 
         <div className="rounded-md border overflow-x-auto">
@@ -358,12 +466,14 @@ export function CertificationClient({
                     <TableCell className="font-medium">{cert.nama_pelatihan}</TableCell>
                     <TableCell className="text-xs">{cert.no_sertifikat || "-"}</TableCell>
                     <TableCell className="text-xs">{cert.tanggal_perolehan ? new Date(cert.tanggal_perolehan).toLocaleDateString('id-ID') : "-"}</TableCell>
-                    <TableCell className="text-center">{cert.masa_berlaku_bulan} Bln</TableCell>
+                    <TableCell className="text-center">{cert.masa_berlaku_bulan ? `${cert.masa_berlaku_bulan} Bln` : "-"}</TableCell>
                     <TableCell className="text-xs">{cert.tanggal_kadaluarsa ? new Date(cert.tanggal_kadaluarsa).toLocaleDateString('id-ID') : "-"}</TableCell>
                     <TableCell className="text-center">
-                      <span className={calculateDaysLeft(cert.tanggal_kadaluarsa) < 30 ? "text-red-600 font-bold" : ""}>
-                        {calculateDaysLeft(cert.tanggal_kadaluarsa)}
-                      </span>
+                      {(() => {
+                        const d = calculateDaysLeft(cert.tanggal_kadaluarsa);
+                        if (d === null) return <span className="text-slate-400">-</span>;
+                        return <span className={d < 30 ? "text-red-600 font-bold" : ""}>{d}</span>;
+                      })()}
                     </TableCell>
                     <TableCell className="text-xs">{cert.lembaga || "-"}</TableCell>
                     <TableCell>
