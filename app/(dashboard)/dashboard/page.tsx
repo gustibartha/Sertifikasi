@@ -195,8 +195,9 @@ export default async function DashboardPage() {
     { name: "Tanpa Masa Berlaku", value: certStatus.tanpa },
   ].filter((d) => d.value > 0);
 
+  // Nama lembaga disimpan utuh; pemendekan dilakukan di chart agar tooltip tetap lengkap
   const certLembagaData = Object.entries(lembagaMap)
-    .map(([name, total]) => ({ name: name.length > 28 ? name.slice(0, 26) + "…" : name, total }))
+    .map(([name, total]) => ({ name, total }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 8);
 

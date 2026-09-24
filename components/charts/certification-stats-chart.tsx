@@ -72,35 +72,55 @@ export function CertificationStatsChart({
     </div>
   );
 
-  const renderPie = (data: { name: string; value: number }[], colorFor: (n: string, i: number) => string) => (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="45%"
-          innerRadius={55}
-          outerRadius={95}
-          paddingAngle={4}
-          dataKey="value"
-          label={({ name, value }: any) => `${name}: ${value}`}
-          style={{ fontSize: "12px" }}
-        >
-          {data.map((e, i) => (
-            <Cell key={e.name} fill={colorFor(e.name, i)} />
-          ))}
-        </Pie>
-        <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} sertifikat`, "Jumlah"]} />
-        <Legend
-          verticalAlign="bottom"
-          height={36}
-          formatter={(value: string) => (
-            <span style={{ color: "var(--foreground)", fontSize: "12px" }}>{value}</span>
-          )}
-        />
-      </PieChart>
-    </ResponsiveContainer>
-  );
+  /**
+   * Kartu ini hanya selebar 1/3 grid, jadi label di luar pie pasti terpotong.
+   * Angka ditaruh di dalam irisan; nama + jumlah dipindah ke legend.
+   */
+  const renderPie = (data: { name: string; value: number }[], colorFor: (n: string, i: number) => string) => {
+    const total = data.reduce((a, d) => a + d.value, 0);
+    return (
+      <ResponsiveContainer width="100%" height={320}>
+        <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="40%"
+            innerRadius={48}
+            outerRadius={84}
+            paddingAngle={3}
+            dataKey="value"
+            labelLine={false}
+            label={({ value, percent }: any) =>
+              percent >= 0.07 ? `${value}` : ""
+            }
+            style={{ fontSize: "11px", fontWeight: 700, fill: "#fff" }}
+          >
+            {data.map((e, i) => (
+              <Cell key={e.name} fill={colorFor(e.name, i)} />
+            ))}
+          </Pie>
+          <Tooltip contentStyle={tooltipStyle} formatter={(v: any, n: any) => [`${v} sertifikat`, n]} />
+          <Legend
+            verticalAlign="bottom"
+            height={72}
+            iconSize={9}
+            formatter={(value: string, entry: any) => {
+              const v = entry?.payload?.value ?? 0;
+              const pct = total > 0 ? Math.round((v / total) * 100) : 0;
+              return (
+                <span style={{ color: "var(--foreground)", fontSize: "11px" }}>
+                  {value} — {v} ({pct}%)
+                </span>
+              );
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  /** Pendekkan teks panjang agar tidak terpotong di sumbu. */
+  const potong = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
   const renderChart = () => {
     if (chartType === "status") {
@@ -117,12 +137,22 @@ export function CertificationStatsChart({
       if (jadwalData.length === 0) return kosong;
       return (
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={jadwalData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-            <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-            <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+          <BarChart data={jadwalData} margin={{ top: 20, right: 8, left: -22, bottom: 24 }}>
+            <XAxis
+              dataKey="name"
+              stroke="var(--muted-foreground)"
+              fontSize={9}
+              tickLine={false}
+              axisLine={false}
+              interval={0}
+              angle={-45}
+              textAnchor="end"
+              height={44}
+            />
+            <YAxis stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} width={32} />
             <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={tooltipStyle} formatter={(v: any) => [`${v} sertifikat`, "Kadaluarsa"]} />
             <Bar dataKey="total" fill="#f59e0b" radius={[3, 3, 0, 0]} name="Kadaluarsa">
-              <LabelList dataKey="total" position="top" style={{ fontSize: "10px", fill: "var(--muted-foreground)" }} />
+              <LabelList dataKey="total" position="top" style={{ fontSize: "9px", fill: "var(--muted-foreground)" }} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -133,12 +163,28 @@ export function CertificationStatsChart({
     if (lembagaData.length === 0) return kosong;
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={lembagaData} layout="vertical" margin={{ top: 10, right: 36, left: 10, bottom: 0 }}>
-          <XAxis type="number" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-          <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} width={150} />
-          <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={tooltipStyle} formatter={(v: any) => [`${v} sertifikat`, "Jumlah"]} />
+        <BarChart data={lembagaData} layout="vertical" margin={{ top: 4, right: 30, left: 4, bottom: 4 }}>
+          <XAxis type="number" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+          <YAxis
+            type="category"
+            dataKey="name"
+            stroke="var(--muted-foreground)"
+            fontSize={9}
+            tickLine={false}
+            axisLine={false}
+            width={118}
+            interval={0}
+            tickFormatter={(v: string) => potong(v, 20)}
+          />
+          {/* Tooltip memakai label penuh, jadi nama yang dipendekkan tetap terbaca */}
+          <Tooltip
+            cursor={{ fill: "rgba(0,0,0,0.03)" }}
+            contentStyle={tooltipStyle}
+            formatter={(v: any) => [`${v} sertifikat`, "Jumlah"]}
+            labelFormatter={(l: any) => l}
+          />
           <Bar dataKey="total" fill="#6366f1" radius={[0, 4, 4, 0]} name="Jumlah">
-            <LabelList dataKey="total" position="right" style={{ fontSize: "11px", fontWeight: 600, fill: "var(--foreground)" }} />
+            <LabelList dataKey="total" position="right" style={{ fontSize: "10px", fontWeight: 600, fill: "var(--foreground)" }} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -147,31 +193,32 @@ export function CertificationStatsChart({
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-start sm:items-center justify-between pb-4">
+      {/* Kartu ini sempit (1/3 grid): header ditumpuk agar judul & dropdown tidak terpotong */}
+      <CardHeader className="flex flex-col gap-3 pb-4">
         <div className="space-y-1">
-          <CardTitle className="flex items-center gap-2">
-            {chartConfig[chartType].title}
+          <CardTitle className="flex flex-wrap items-center gap-2 text-base leading-snug">
+            <span className="break-words">{chartConfig[chartType].title}</span>
             {total > 0 && (
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-sm font-bold text-slate-600">
+              <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
                 {total} sertifikat
               </span>
             )}
           </CardTitle>
-          <CardDescription>{chartConfig[chartType].description}</CardDescription>
+          <CardDescription className="text-xs leading-relaxed">
+            {chartConfig[chartType].description}
+          </CardDescription>
         </div>
-        <div className="w-[190px]">
-          <Select value={chartType} onValueChange={(v) => v && setChartType(v as ChartType)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih metrik" />
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              <SelectItem value="status">Status Sertifikasi</SelectItem>
-              <SelectItem value="jadwal">Jadwal Kadaluarsa</SelectItem>
-              <SelectItem value="lembaga">Lembaga</SelectItem>
-              <SelectItem value="tipe">Tipe Pegawai</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={chartType} onValueChange={(v) => v && setChartType(v as ChartType)}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Pilih metrik" />
+          </SelectTrigger>
+          <SelectContent className="bg-white">
+            <SelectItem value="status">Status Sertifikasi</SelectItem>
+            <SelectItem value="jadwal">Jadwal Kadaluarsa</SelectItem>
+            <SelectItem value="lembaga">Lembaga</SelectItem>
+            <SelectItem value="tipe">Tipe Pegawai</SelectItem>
+          </SelectContent>
+        </Select>
       </CardHeader>
       <CardContent className="pl-2">{renderChart()}</CardContent>
     </Card>
