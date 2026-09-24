@@ -72,28 +72,38 @@ export function CertificationStatsChart({
     </div>
   );
 
+  /** Pendekkan teks panjang agar tidak terpotong di sumbu. */
+  function potong(s: string, n: number) {
+    return s.length > n ? s.slice(0, n - 1) + "…" : s;
+  }
+
   /**
-   * Kartu ini hanya selebar 1/3 grid, jadi label di luar pie pasti terpotong.
-   * Angka ditaruh di dalam irisan; nama + jumlah dipindah ke legend.
+   * Donut untuk data kategori (Status & Tipe Pegawai).
+   *
+   * Catatan penting: JANGAN memberi `fill` lewat prop `style` pada <Pie>.
+   * Inline CSS fill menimpa atribut fill dari <Cell>, sehingga seluruh irisan
+   * menjadi putih dan grafik tampak hilang di atas kartu putih.
+   * Label juga tidak digambar di luar irisan karena kartu ini sempit
+   * (1/3 grid) — nama, jumlah, dan persentase ditaruh di legend.
    */
-  const renderPie = (data: { name: string; value: number }[], colorFor: (n: string, i: number) => string) => {
+  const renderKategori = (
+    data: { name: string; value: number }[],
+    colorFor: (n: string, i: number) => string
+  ) => {
     const total = data.reduce((a, d) => a + d.value, 0);
     return (
       <ResponsiveContainer width="100%" height={320}>
-        <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+        <PieChart>
           <Pie
             data={data}
+            dataKey="value"
+            nameKey="name"
             cx="50%"
             cy="40%"
-            innerRadius={48}
-            outerRadius={84}
-            paddingAngle={3}
-            dataKey="value"
-            labelLine={false}
-            label={({ value, percent }: any) =>
-              percent >= 0.07 ? `${value}` : ""
-            }
-            style={{ fontSize: "11px", fontWeight: 700, fill: "#fff" }}
+            innerRadius={52}
+            outerRadius={88}
+            paddingAngle={2}
+            isAnimationActive={false}
           >
             {data.map((e, i) => (
               <Cell key={e.name} fill={colorFor(e.name, i)} />
@@ -102,7 +112,7 @@ export function CertificationStatsChart({
           <Tooltip contentStyle={tooltipStyle} formatter={(v: any, n: any) => [`${v} sertifikat`, n]} />
           <Legend
             verticalAlign="bottom"
-            height={72}
+            height={76}
             iconSize={9}
             formatter={(value: string, entry: any) => {
               const v = entry?.payload?.value ?? 0;
@@ -119,18 +129,15 @@ export function CertificationStatsChart({
     );
   };
 
-  /** Pendekkan teks panjang agar tidak terpotong di sumbu. */
-  const potong = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
-
   const renderChart = () => {
     if (chartType === "status") {
       if (statusData.length === 0) return kosong;
-      return renderPie(statusData, (n) => STATUS_COLORS[n] ?? "#94a3b8");
+      return renderKategori(statusData, (n) => STATUS_COLORS[n] ?? "#94a3b8");
     }
 
     if (chartType === "tipe") {
       if (tipeData.length === 0) return kosong;
-      return renderPie(tipeData, (_n, i) => TIPE_COLORS[i % TIPE_COLORS.length]);
+      return renderKategori(tipeData, (_n, i) => TIPE_COLORS[i % TIPE_COLORS.length]);
     }
 
     if (chartType === "jadwal") {
