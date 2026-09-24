@@ -145,6 +145,37 @@ export function CertificationClient({
     await updateCertification(id, { status_eksekusi: status });
   };
 
+  // Deklarasi fungsi (bukan const) agar ter-hoist: dipakai oleh filteredData di bawah.
+  /** Sisa hari; null bila tanggal berakhir kosong/tidak valid. */
+  function calculateDaysLeft(expiryDate?: string | null) {
+    if (!expiryDate) return null;
+    const expiry = new Date(expiryDate);
+    if (isNaN(expiry.getTime())) return null;
+    return Math.ceil((expiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  /** Kategori status; "tanpa" bila sertifikat tidak punya tanggal berakhir. */
+  function getStatusKey(expiryDate?: string | null) {
+    const d = calculateDaysLeft(expiryDate);
+    if (d === null) return "tanpa";
+    if (d < 0) return "kadaluwarsa";
+    if (d <= 30) return "kritis";
+    if (d <= 90) return "segera";
+    return "aktif";
+  }
+
+  function getStatusBadge(expiryDate?: string | null) {
+    const key = getStatusKey(expiryDate);
+    const d = calculateDaysLeft(expiryDate);
+    if (key === "tanpa")
+      return <Badge variant="outline" className="text-slate-500 border-slate-300">Tanpa Masa Berlaku</Badge>;
+    if (key === "kadaluwarsa") return <Badge variant="destructive">Kadaluwarsa</Badge>;
+    if (key === "kritis") return <Badge className="bg-red-500 hover:bg-red-600">Kritis (H-{d})</Badge>;
+    if (key === "segera")
+      return <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Segera Habis</Badge>;
+    return <Badge className="bg-emerald-500 hover:bg-emerald-600">Aktif</Badge>;
+  }
+
   const uniqueLembaga = Array.from(
     new Set(initialData.map((c) => c.lembaga).filter(Boolean))
   ).sort() as string[];
@@ -174,36 +205,6 @@ export function CertificationClient({
     return matchSearch && matchStatus && matchLembaga && matchEksekusi;
   });
 
-  /** Kategori status; null bila sertifikat tidak punya tanggal berakhir. */
-  const getStatusKey = (expiryDate?: string | null) => {
-    const d = calculateDaysLeft(expiryDate);
-    if (d === null) return "tanpa";
-    if (d < 0) return "kadaluwarsa";
-    if (d <= 30) return "kritis";
-    if (d <= 90) return "segera";
-    return "aktif";
-  };
-
-  const getStatusBadge = (expiryDate?: string | null) => {
-    const key = getStatusKey(expiryDate);
-    const d = calculateDaysLeft(expiryDate);
-    if (key === "tanpa")
-      return <Badge variant="outline" className="text-slate-500 border-slate-300">Tanpa Masa Berlaku</Badge>;
-    if (key === "kadaluwarsa") return <Badge variant="destructive">Kadaluwarsa</Badge>;
-    if (key === "kritis") return <Badge className="bg-red-500 hover:bg-red-600">Kritis (H-{d})</Badge>;
-    if (key === "segera")
-      return <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Segera Habis</Badge>;
-    return <Badge className="bg-emerald-500 hover:bg-emerald-600">Aktif</Badge>;
-  };
-
-  /** Sisa hari; null bila tanggal berakhir kosong/tidak valid. */
-  const calculateDaysLeft = (expiryDate?: string | null) => {
-    if (!expiryDate) return null;
-    const expiry = new Date(expiryDate);
-    if (isNaN(expiry.getTime())) return null;
-    return Math.ceil((expiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -225,11 +226,13 @@ export function CertificationClient({
           )}
 
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger>
-              <Button className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5">
-                <Plus className="h-4 w-4" />
-                Tambah Sertifikasi
-              </Button>
+            <DialogTrigger
+              render={
+                <Button className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5" />
+              }
+            >
+              <Plus className="h-4 w-4" />
+              Tambah Sertifikasi
             </DialogTrigger>
             <DialogContent className="sm:max-w-[650px] bg-white/95 backdrop-blur-xl border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
