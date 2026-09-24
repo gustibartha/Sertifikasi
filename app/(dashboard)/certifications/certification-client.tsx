@@ -31,7 +31,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -495,7 +494,7 @@ export function CertificationClient({
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                          <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">Aksi</div>
                           <DropdownMenuItem 
                             className="cursor-pointer text-blue-600 focus:text-blue-700 focus:bg-blue-50 font-medium"
                             onClick={() => handleStatusEksekusi(cert.id, "Dieksekusi")}

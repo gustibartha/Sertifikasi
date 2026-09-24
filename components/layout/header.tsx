@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -63,10 +62,11 @@ export function Header() {
             <span className="sr-only">Notifikasi</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80 bg-white">
-            <DropdownMenuLabel className="flex items-center justify-between">
+            {/* div biasa: Menu.GroupLabel wajib di dalam Menu.Group, kalau tidak popup gagal render */}
+            <div className="flex items-center justify-between px-1.5 py-1 text-xs font-medium text-muted-foreground">
               <span>Notifikasi</span>
-              <span className="text-xs font-normal text-muted-foreground">{notifs.length} peringatan</span>
-            </DropdownMenuLabel>
+              <span className="font-normal">{notifs.length} peringatan</span>
+            </div>
             <DropdownMenuSeparator />
             {notifs.length === 0 ? (
               <div className="flex flex-col items-center gap-1 py-6 text-center text-sm text-muted-foreground">
@@ -107,10 +107,10 @@ export function Header() {
             </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-60 bg-white">
-            <DropdownMenuLabel className="flex flex-col">
-              <span className="font-semibold">{user?.name || "Pengguna"}</span>
-              <span className="text-xs font-normal text-muted-foreground truncate">{user?.email || "-"}</span>
-            </DropdownMenuLabel>
+            <div className="flex flex-col px-1.5 py-1">
+              <span className="text-sm font-semibold text-foreground">{user?.name || "Pengguna"}</span>
+              <span className="truncate text-xs text-muted-foreground">{user?.email || "-"}</span>
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<Link href="/profil" />} className="cursor-pointer">
               <User className="mr-2 h-4 w-4" /> Profil Saya

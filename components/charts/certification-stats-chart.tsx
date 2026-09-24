@@ -12,6 +12,7 @@ import {
   Pie,
   Cell,
   Legend,
+  LabelList,
 } from "recharts";
 import {
   Select,
@@ -22,172 +23,157 @@ import {
 } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
-const statusData = [
-  { name: "Aktif", value: 85 },
-  { name: "Segera Habis", value: 12 },
-  { name: "Kadaluwarsa", value: 8 },
-  { name: "Belum Sertifikasi", value: 37 },
-];
+/** Warna mengikuti urutan kategori status pada certStatusData. */
+const STATUS_COLORS: Record<string, string> = {
+  "Aktif": "#10b981",
+  "Segera Habis": "#f59e0b",
+  "Kritis": "#ef4444",
+  "Kadaluwarsa": "#b91c1c",
+  "Tanpa Masa Berlaku": "#94a3b8",
+};
+const TIPE_COLORS = ["#3b82f6", "#14b8a6"];
 
-const monthlyData = [
-  { name: "Jan", terbit: 5, expired: 2 },
-  { name: "Feb", terbit: 3, expired: 1 },
-  { name: "Mar", terbit: 8, expired: 3 },
-  { name: "Apr", terbit: 2, expired: 4 },
-  { name: "Mei", terbit: 6, expired: 2 },
-  { name: "Jun", terbit: 4, expired: 1 },
-  { name: "Jul", terbit: 7, expired: 0 },
-  { name: "Agu", terbit: 3, expired: 2 },
-  { name: "Sep", terbit: 9, expired: 1 },
-  { name: "Okt", terbit: 5, expired: 3 },
-  { name: "Nov", terbit: 4, expired: 2 },
-  { name: "Des", terbit: 6, expired: 1 },
-];
+const tooltipStyle = {
+  borderRadius: "8px",
+  border: "1px solid var(--border)",
+  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
+  fontSize: "13px",
+};
 
-const lembagaData = [
-  { name: "BNSP", total: 32 },
-  { name: "Kemnaker RI", total: 24 },
-  { name: "TUV Rheinland", total: 11 },
-  { name: "PMI", total: 8 },
-  { name: "LSP Lainnya", total: 15 },
-];
+type ChartType = "status" | "jadwal" | "lembaga" | "tipe";
 
-const STATUS_COLORS = ["#10b981", "#f59e0b", "#ef4444", "#94a3b8"];
+const chartConfig: Record<ChartType, { title: string; description: string }> = {
+  status: { title: "Status Sertifikasi", description: "Komposisi sertifikat menurut masa berlakunya." },
+  jadwal: { title: "Jadwal Kadaluarsa", description: "Jumlah sertifikat yang berakhir tiap bulan (12 bulan ke depan)." },
+  lembaga: { title: "Lembaga Sertifikasi", description: "Sertifikat terbanyak menurut lembaga penerbit." },
+  tipe: { title: "Sertifikat per Tipe Pegawai", description: "Perbandingan jumlah sertifikat Organik dan TAD." },
+};
 
-export function CertificationStatsChart() {
-  const [chartType, setChartType] = useState("status");
+interface Props {
+  statusData?: { name: string; value: number }[];
+  jadwalData?: { name: string; total: number }[];
+  lembagaData?: { name: string; total: number }[];
+  tipeData?: { name: string; value: number }[];
+  total?: number;
+}
+
+export function CertificationStatsChart({
+  statusData = [],
+  jadwalData = [],
+  lembagaData = [],
+  tipeData = [],
+  total = 0,
+}: Props) {
+  const [chartType, setChartType] = useState<ChartType>("status");
+
+  const kosong = (
+    <div className="flex h-[300px] items-center justify-center text-sm italic text-muted-foreground">
+      Belum ada data sertifikasi.
+    </div>
+  );
+
+  const renderPie = (data: { name: string; value: number }[], colorFor: (n: string, i: number) => string) => (
+    <ResponsiveContainer width="100%" height={300}>
+      <PieChart>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="45%"
+          innerRadius={55}
+          outerRadius={95}
+          paddingAngle={4}
+          dataKey="value"
+          label={({ name, value }: any) => `${name}: ${value}`}
+          style={{ fontSize: "12px" }}
+        >
+          {data.map((e, i) => (
+            <Cell key={e.name} fill={colorFor(e.name, i)} />
+          ))}
+        </Pie>
+        <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} sertifikat`, "Jumlah"]} />
+        <Legend
+          verticalAlign="bottom"
+          height={36}
+          formatter={(value: string) => (
+            <span style={{ color: "var(--foreground)", fontSize: "12px" }}>{value}</span>
+          )}
+        />
+      </PieChart>
+    </ResponsiveContainer>
+  );
 
   const renderChart = () => {
-    switch (chartType) {
-      case "status":
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={statusData}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={95}
-                paddingAngle={4}
-                dataKey="value"
-                label={({ name, value }: any) => `${name || "Unknown"}: ${value || 0}`}
-                style={{ fontSize: "12px" }}
-              >
-                {statusData.map((_entry, index) => (
-                  <Cell key={`cell-${index}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "1px solid var(--border)",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
-                  fontSize: "13px",
-                }}
-              />
-              <Legend
-                verticalAlign="bottom"
-                height={36}
-                formatter={(value: string) => (
-                  <span style={{ color: "var(--foreground)", fontSize: "12px" }}>{value}</span>
-                )}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        );
-      case "bulanan":
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-              <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-              <Tooltip
-                cursor={{ fill: "rgba(0,0,0,0.03)" }}
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "1px solid var(--border)",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
-                  fontSize: "13px",
-                }}
-              />
-              <Legend
-                verticalAlign="top"
-                height={36}
-                formatter={(value: string) => (
-                  <span style={{ color: "var(--foreground)", fontSize: "12px" }}>
-                    {value === "terbit" ? "Sertifikat Terbit" : "Sertifikat Expired"}
-                  </span>
-                )}
-              />
-              <Bar dataKey="terbit" fill="#10b981" radius={[3, 3, 0, 0]} name="terbit" />
-              <Bar dataKey="expired" fill="#ef4444" radius={[3, 3, 0, 0]} name="expired" />
-            </BarChart>
-          </ResponsiveContainer>
-        );
-      case "lembaga":
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={lembagaData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-              <XAxis type="number" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} width={90} />
-              <Tooltip
-                cursor={{ fill: "rgba(0,0,0,0.03)" }}
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "1px solid var(--border)",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
-                  fontSize: "13px",
-                }}
-              />
-              <Bar dataKey="total" fill="var(--primary)" radius={[0, 4, 4, 0]} name="Jumlah Sertifikat" />
-            </BarChart>
-          </ResponsiveContainer>
-        );
-      default:
-        return null;
+    if (chartType === "status") {
+      if (statusData.length === 0) return kosong;
+      return renderPie(statusData, (n) => STATUS_COLORS[n] ?? "#94a3b8");
     }
-  };
 
-  const getTitle = () => {
-    switch (chartType) {
-      case "status": return "Status Sertifikasi";
-      case "bulanan": return "Tren Sertifikasi Bulanan";
-      case "lembaga": return "Sertifikasi per Lembaga";
+    if (chartType === "tipe") {
+      if (tipeData.length === 0) return kosong;
+      return renderPie(tipeData, (_n, i) => TIPE_COLORS[i % TIPE_COLORS.length]);
     }
-  };
 
-  const getDescription = () => {
-    switch (chartType) {
-      case "status": return "Komposisi status sertifikasi seluruh pegawai.";
-      case "bulanan": return "Tren penerbitan dan kedaluwarsa sertifikat per bulan.";
-      case "lembaga": return "Distribusi sertifikasi berdasarkan lembaga penerbit (LSK).";
+    if (chartType === "jadwal") {
+      if (jadwalData.length === 0) return kosong;
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={jadwalData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+            <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+            <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+            <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={tooltipStyle} formatter={(v: any) => [`${v} sertifikat`, "Kadaluarsa"]} />
+            <Bar dataKey="total" fill="#f59e0b" radius={[3, 3, 0, 0]} name="Kadaluarsa">
+              <LabelList dataKey="total" position="top" style={{ fontSize: "10px", fill: "var(--muted-foreground)" }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      );
     }
+
+    // lembaga
+    if (lembagaData.length === 0) return kosong;
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={lembagaData} layout="vertical" margin={{ top: 10, right: 36, left: 10, bottom: 0 }}>
+          <XAxis type="number" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+          <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} width={150} />
+          <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }} contentStyle={tooltipStyle} formatter={(v: any) => [`${v} sertifikat`, "Jumlah"]} />
+          <Bar dataKey="total" fill="#6366f1" radius={[0, 4, 4, 0]} name="Jumlah">
+            <LabelList dataKey="total" position="right" style={{ fontSize: "11px", fontWeight: 600, fill: "var(--foreground)" }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
   };
 
   return (
     <Card className="shadow-sm">
       <CardHeader className="flex flex-row items-start sm:items-center justify-between pb-4">
         <div className="space-y-1">
-          <CardTitle>{getTitle()}</CardTitle>
-          <CardDescription>{getDescription()}</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            {chartConfig[chartType].title}
+            {total > 0 && (
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-sm font-bold text-slate-600">
+                {total} sertifikat
+              </span>
+            )}
+          </CardTitle>
+          <CardDescription>{chartConfig[chartType].description}</CardDescription>
         </div>
-        <div className="w-[180px]">
-          <Select value={chartType} onValueChange={(v) => v && setChartType(v)}>
+        <div className="w-[190px]">
+          <Select value={chartType} onValueChange={(v) => v && setChartType(v as ChartType)}>
             <SelectTrigger>
               <SelectValue placeholder="Pilih metrik" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white">
               <SelectItem value="status">Status Sertifikasi</SelectItem>
-              <SelectItem value="bulanan">Tren Bulanan</SelectItem>
-              <SelectItem value="lembaga">Per Lembaga</SelectItem>
+              <SelectItem value="jadwal">Jadwal Kadaluarsa</SelectItem>
+              <SelectItem value="lembaga">Lembaga</SelectItem>
+              <SelectItem value="tipe">Tipe Pegawai</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </CardHeader>
-      <CardContent className="pl-2">
-        {renderChart()}
-      </CardContent>
+      <CardContent className="pl-2">{renderChart()}</CardContent>
     </Card>
   );
 }

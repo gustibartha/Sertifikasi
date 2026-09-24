@@ -137,6 +137,81 @@ export default async function DashboardPage() {
   const expiringAlertsTAD = expiringCerts.filter(c => c.employeeStatus === 'TAD');
   const totalExpiring = expiringCerts.length;
 
+  // 2b. Statistik sertifikasi (data nyata untuk chart dashboard)
+  const allCerts = await db
+    .select({
+      exp: certifications.tanggal_kadaluarsa,
+      lembaga: certifications.lembaga,
+      empStatus: employees.status_pegawai,
+    })
+    .from(certifications)
+    .innerJoin(employees, eq(certifications.employee_nid, employees.nid));
+
+  const sisaHari = (d?: string | null) => {
+    if (!d) return null;
+    const t = new Date(d);
+    if (isNaN(t.getTime())) return null;
+    return Math.ceil((t.getTime() - today.getTime()) / 86400000);
+  };
+
+  const certStatus = { aktif: 0, segera: 0, kritis: 0, kadaluwarsa: 0, tanpa: 0 };
+  const lembagaMap: Record<string, number> = {};
+  const tipeMap = { Organik: 0, TAD: 0 };
+  // 12 bulan ke depan: berapa sertifikat kadaluarsa tiap bulan
+  const bulanLabels: string[] = [];
+  const bulanKey: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    bulanKey.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    bulanLabels.push(d.toLocaleDateString("id-ID", { month: "short", year: "2-digit" }));
+  }
+  const bulanCount: Record<string, number> = {};
+
+  allCerts.forEach((c) => {
+    const d = sisaHari(c.exp);
+    if (d === null) certStatus.tanpa++;
+    else if (d < 0) certStatus.kadaluwarsa++;
+    else if (d <= 30) certStatus.kritis++;
+    else if (d <= 90) certStatus.segera++;
+    else certStatus.aktif++;
+
+    const lb = (c.lembaga || "").trim() || "Tidak Terdata";
+    lembagaMap[lb] = (lembagaMap[lb] || 0) + 1;
+
+    if (c.empStatus === "Organik") tipeMap.Organik++;
+    else if (c.empStatus === "TAD") tipeMap.TAD++;
+
+    if (c.exp) {
+      const key = c.exp.slice(0, 7);
+      if (bulanKey.includes(key)) bulanCount[key] = (bulanCount[key] || 0) + 1;
+    }
+  });
+
+  const certStatusData = [
+    { name: "Aktif", value: certStatus.aktif },
+    { name: "Segera Habis", value: certStatus.segera },
+    { name: "Kritis", value: certStatus.kritis },
+    { name: "Kadaluwarsa", value: certStatus.kadaluwarsa },
+    { name: "Tanpa Masa Berlaku", value: certStatus.tanpa },
+  ].filter((d) => d.value > 0);
+
+  const certLembagaData = Object.entries(lembagaMap)
+    .map(([name, total]) => ({ name: name.length > 28 ? name.slice(0, 26) + "…" : name, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8);
+
+  const certBulananData = bulanKey.map((k, i) => ({
+    name: bulanLabels[i],
+    total: bulanCount[k] || 0,
+  }));
+
+  const certTipeData = [
+    { name: "Organik", value: tipeMap.Organik },
+    { name: "TAD", value: tipeMap.TAD },
+  ].filter((d) => d.value > 0);
+
+  const totalSertifikat = allCerts.length;
+
   // 3. Pensiun Tahun Ini
   const currentYear = today.getFullYear().toString();
   const retiringThisYearRes = await db
@@ -235,113 +310,13 @@ export default async function DashboardPage() {
       <div className="grid gap-6 grid-cols-1 xl:grid-cols-3">
         <DashboardDemographics organik={organikStats} tad={tadStats} />
 
-        <CertificationStatsChart />
-      </div>
-
-      <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
-        {/* Peringatan Sertifikasi Organik */}
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Peringatan Sertifikasi Organik</CardTitle>
-              <CardDescription>
-                Sertifikasi karyawan organik yang kadaluwarsa {`< 30 Hari`}.
-              </CardDescription>
-            </div>
-            <Link href="/certifications" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Lihat <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama Pegawai</TableHead>
-                  <TableHead>Sertifikasi</TableHead>
-                  <TableHead>Tgl Kadaluwarsa</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expiringAlertsOrganik.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-4">Aman. Tidak ada sertifikasi organik yang akan habis.</TableCell>
-                  </TableRow>
-                ) : (
-                  expiringAlertsOrganik.map((alert) => {
-                    const daysLeft = calculateDaysLeft(alert.expiryDate);
-                    return (
-                      <TableRow key={alert.id}>
-                        <TableCell className="font-medium">{alert.employeeName}</TableCell>
-                        <TableCell>{alert.certification}</TableCell>
-                        <TableCell>{new Date(alert.expiryDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
-                        <TableCell>
-                          {daysLeft < 0 ? (
-                            <Badge variant="destructive">Kadaluwarsa</Badge>
-                          ) : (
-                            <Badge variant="destructive" className="bg-red-500">{daysLeft} Hari Lagi</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Peringatan Sertifikasi TAD */}
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Peringatan Sertifikasi TAD</CardTitle>
-              <CardDescription>
-                Sertifikasi tenaga alih daya yang kadaluwarsa {`< 30 Hari`}.
-              </CardDescription>
-            </div>
-            <Link href="/certifications-tad" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Lihat <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Perusahaan</TableHead>
-                  <TableHead>Sertifikasi</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expiringAlertsTAD.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-4">Aman. Tidak ada sertifikasi TAD yang akan habis.</TableCell>
-                  </TableRow>
-                ) : (
-                  expiringAlertsTAD.map((alert) => {
-                    const daysLeft = calculateDaysLeft(alert.expiryDate);
-                    return (
-                      <TableRow key={alert.id}>
-                        <TableCell className="font-medium">{alert.employeeName}</TableCell>
-                        <TableCell className="text-xs">{alert.perusahaan || '-'}</TableCell>
-                        <TableCell>{alert.certification}</TableCell>
-                        <TableCell>
-                          {daysLeft < 0 ? (
-                            <Badge variant="destructive">Kadaluwarsa</Badge>
-                          ) : (
-                            <Badge variant="destructive" className="bg-red-500">{daysLeft} Hari Lagi</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <CertificationStatsChart
+          statusData={certStatusData}
+          jadwalData={certBulananData}
+          lembagaData={certLembagaData}
+          tipeData={certTipeData}
+          total={totalSertifikat}
+        />
       </div>
     </div>
   );
